@@ -1,1 +1,13 @@
 db.db 
+.idea/
+.logs/
+*.pyc
+*.log
+.cache
+/dist/
+/*.egg-info
+.eggs/
+.gitignore
+**/*.egg-info/
+**/dist/
+**/build/
