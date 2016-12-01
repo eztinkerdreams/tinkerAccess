@@ -1,0 +1,55 @@
+language: python
+python:
+  - '2.7'
+cache: pip
+sudo: required
+install:
+  - pip install twine
+  - echo -e __version__="\"${VERSION}\"\n" > "${VERSION_DEST}"
+
+script:
+  - cd "${PYTHON_PACKAGE_SRC}" && sudo pip install --upgrade --no-compile --force-reinstall --quiet . && sudo python setup.py test
+
+before_deploy:
+
+  #TODO: generating a change log for the release message would be nice....
+
+  - git config --global user.email "builds@travis-ci.com"
+  - git config --global user.name "Travis CI"
+  - git add "${VERSION_DEST}" && git commit -am "Set build VERSION number"
+  - git tag "v${VERSION}" -a -m "Generated tag from TravisCI build ${TRAVIS_BUILD_NUMBER}"
+
+  # IMPORTANT: suppressing output for this command prevents the decrypted GITHUB_API_KEY appearing in the build log
+  - git push --quiet --follow-tags "https://${GITHUB_API_KEY}@github.com/${TRAVIS_REPO_SLUG}" "v${VERSION}" > /dev/null 2>&1
+  - sudo chown -R ${USER}:`id -g -n` "${TINKER_ACCESS_CLIENT_SRC}"
+
+deploy:
+  provider: releases
+  api_key: ${GITHUB_API_KEY}
+  file_glob: true
+  file: ${TINKER_ACCESS_CLIENT_SRC}/version.py #TODO: this file should just be a change log, everything else is zipped
+  skip_cleanup: true
+  on:
+    tags: false
+    all_branches: true
+    #TODO: change to only release from master when work is complete
+
+after_deploy:
+  - cd "${PYTHON_PACKAGE_SRC}"
+  - sudo python setup.py sdist
+  # TODO: fix, unable to find bdist_wheel command, this will speed up install time on the clients
+  #  - sudo python setup.py sdist bdist_wheel
+  - twine upload -u "${PYPI_USERNAME}" -p "${PYPI_PASSWORD}" --comment "Uploaded by Travis CI" dist/*
+
+env:
+  global:
+    - PYTHON_PACKAGE_NAME="tinker_access_client"
+    - VERSION="$(date -u '+%Y.%m.%d').${TRAVIS_BUILD_NUMBER}"
+    - PYTHON_PACKAGE_SRC="${TRAVIS_BUILD_DIR}/${PYTHON_PACKAGE_NAME}"
+    - TINKER_ACCESS_CLIENT_SRC="/usr/local/lib/python2.7/dist-packages/${PYTHON_PACKAGE_NAME}"
+    - VERSION_DEST="${TRAVIS_BUILD_DIR}/${PYTHON_PACKAGE_NAME}/${PYTHON_PACKAGE_NAME}/version.py"
+
+branches:
+  except:
+    #Important: Prevents version release 'tag' commits from initiating builds
+    - /^v[0-9a-z\-]*/
