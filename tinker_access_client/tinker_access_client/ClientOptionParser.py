@@ -34,7 +34,8 @@ ClientOptionDefaults = {
 class ClientOptionParser(object):
     def __init__(self, phase=None):
         self.__phase = phase
-        self.__parser = OptionParser(version='%prog v{0}'.format(PackageInfo.version))
+        self.__parser = OptionParser(
+            version='%prog v{0}'.format(PackageInfo.version) if PackageInfo.version is not None else None)
 
         if phase == 'install':
             for arg in sys.argv:
