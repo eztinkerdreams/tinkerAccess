@@ -24,7 +24,7 @@ class ClientDaemon:
             while counter < 720:
                 counter += 1
                 time.sleep(wait)
-                logger.debug('%s running for %s seconds...', PackageInfo.pip_package_name, counter * wait)
+                logger.debug('%s running for %s seconds....', PackageInfo.pip_package_name, counter * wait)
 
         except KeyboardInterrupt as e:
             logger.debug('Keyboard-Interrupt')
@@ -79,12 +79,21 @@ class ClientDaemon:
 
     @staticmethod
     def restart():
+        # TODO: restart should wait until the client is idle.. not in use...
+
         logger = ClientLogger.setup()
         logger.debug('Attempting to restart the %s daemon...', PackageInfo.pip_package_name)
         try:
             # TODO: this needs some work, the start method is creating duplicate threads
-            ClientDaemon.stop()
+
+            # TODO: this try/catch blocks will be removed eventually
+            try:
+                ClientDaemon.stop()
+            except Exception:
+                pass
+
             ClientDaemon.start()
+
         except Exception as e:
             logger.debug('%s daemon restart failed.', PackageInfo.pip_package_name)
             logger.exception(e)
