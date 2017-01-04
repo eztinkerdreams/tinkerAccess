@@ -1,3 +1,10 @@
+import webbrowser
+from threading import Thread
+
+from tinker_access_client.ClientLogger import ClientLogger
+from virtual_device.VirtualDeviceServer import VirtualDeviceServer
+
+
 class _VirtualGPIO(object):
     # https://sourceforge.net/p/raspberry-gpio-python/code/ci/default/tree/source/c_gpio.h
 
@@ -28,6 +35,12 @@ class _VirtualGPIO(object):
     OUT = 1
     PUD_DOWN = 1
     PUD_UP = 2
+
+    def __init__(self):
+        self.__logger = ClientLogger.setup()
+        self.__virtual_device_thread = Thread(target=VirtualDeviceServer.start)
+        self.__virtual_device_thread.daemon = True
+        self.__virtual_device_thread.start()
 
     def setmode(self, *args):
         pass
