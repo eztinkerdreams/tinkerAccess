@@ -88,6 +88,7 @@ class DeviceApi(object):
 
     # noinspection PyPep8Naming,PyUnresolvedReferences
     def __init__SERIAL(self):
+
         import serial
         if self.__opts.get(ClientOption.DEBUG):
             from debug.VirtualSerial import VirtualSerial as serial
