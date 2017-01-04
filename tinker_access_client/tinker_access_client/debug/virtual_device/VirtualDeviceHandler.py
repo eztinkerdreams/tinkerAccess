@@ -1,12 +1,9 @@
-#!/usr/bin/env python
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-from os import curdir, sep
+import os
 import cgi
 import json
+from BaseHTTPServer import BaseHTTPRequestHandler
 
-PORT_NUMBER = 2020
-
-pinState = [
+pins = [
     [
         {'pin': 2, 'desc': '5v Power', 'status': False},
         {'pin': 4, 'desc': '5v Power', 'status': False},
@@ -52,40 +49,39 @@ pinState = [
     ]
 ]
 
-class myHandler(BaseHTTPRequestHandler):
+
+class VirtualDeviceHandler(BaseHTTPRequestHandler):
+    # noinspection PyPep8Naming
     def do_GET(self):
-        if self.path == "/":
-            self.path = "/mockDevice.html"
+        path = '/VirtualDevice.html' if self.path == '/' else self.path
 
         try:
             sendReply = False
-            if self.path.endswith(".html"):
+            if path.endswith(".html"):
                 mimetype = 'text/html'
                 sendReply = True
-            if self.path.endswith(".jpg"):
+            if path.endswith(".jpg"):
                 mimetype = 'image/jpg'
                 sendReply = True
-            if self.path.endswith(".gif"):
+            if path.endswith(".gif"):
                 mimetype = 'image/gif'
                 sendReply = True
-            if self.path.endswith(".js"):
+            if path.endswith(".js"):
                 mimetype = 'application/javascript'
                 sendReply = True
-            if self.path.endswith(".css"):
+            if path.endswith(".css"):
                 mimetype = 'text/css'
                 sendReply = True
-            if self.path.endswith(".json"):
+            if path.endswith(".json"):
                 mimetype = 'application/javascript'
-                sendReply = True
                 self.send_response(200)
                 self.send_header('Content-type', mimetype)
                 self.end_headers()
-                self.wfile.write(json.dumps(pinState))
+                self.wfile.write(json.dumps(pins))
                 return
 
-            if sendReply == True:
-                # Open the static file requested and send it
-                f = open(curdir + sep + self.path)
+            if sendReply:
+                f = open('{0}{1}'.format(os.path.dirname(os.path.realpath(__file__)), path))
                 self.send_response(200)
                 self.send_header('Content-type', mimetype)
                 self.end_headers()
@@ -96,41 +92,24 @@ class myHandler(BaseHTTPRequestHandler):
         except IOError:
             self.send_error(404, 'File Not Found: %s' % self.path)
 
-    # Handler for the POST requests
+    # noinspection PyPep8Naming
     def do_POST(self):
         if self.path == "/send":
-            form = cgi.FieldStorage(
-                fp=self.rfile,
-                headers=self.headers,
-                environ={'REQUEST_METHOD': 'POST',
-                         'CONTENT_TYPE': self.headers['Content-Type'],
-                         })
+            form = cgi.FieldStorage(fp=self.rfile, headers=self.headers, environ={
+                'REQUEST_METHOD': 'POST',
+                'CONTENT_TYPE': self.headers['Content-Type'],
+            })
 
-
-            pinNumber = form['pin'].value
-            pinStatus = form['status'].value == 'false'
-            self.updateStatus(pinNumber, pinStatus)
-
-
+            pin_number = form['pin'].value
+            pin_status = form['status'].value == 'false'
+            self.update_status(pin_number, pin_status)
             self.send_response(200)
             self.end_headers()
             return
 
-    def updateStatus(self, pinNumber, pinStatus):
-        for rows in pinState:
+    def update_status(self, pin_number, pin_status):
+        for rows in pins:
             for pin in rows:
-                if pin['pin'] == int(pinNumber):
-                    pin['status'] = pinStatus
+                if pin['pin'] == int(pin_number):
+                    pin['status'] = pin_status
                     break
-try:
-    # Create a web server and define the handler to manage the
-    # incoming request
-    server = HTTPServer(('', PORT_NUMBER), myHandler)
-    print 'Started httpserver on port ', PORT_NUMBER
-
-    # Wait forever for incoming htto requests
-    server.serve_forever()
-
-except KeyboardInterrupt:
-    print '^C received, shutting down the web server'
-    server.socket.close()

@@ -24,15 +24,9 @@ class DeviceApi(object):
             # !Important: These modules are imported locally at runtime so that the unit test
             # can run on non-rpi devices where GPIO won't load and cannot work
             # (i.e. the build server, and dev environments) see: test_DeviceApi.py
+            self.__init__device_modules()
 
-            self.__init__GPIO()
-            self.__init__LCD()
-            self.__init__SERIAL()
-
-        except ImportError as e:
-            self.__logger.error('RPi modules will only load from a physical RPi device. \n'
-                                'Use the --debug flag to simulate RPi modules (i.e. GPIO) for development/testing '
-                                'purposes on non RPi devices.')
+        except (RuntimeError, ImportError) as e:
             self.__logger.exception(e)
             raise e
 
@@ -45,14 +39,24 @@ class DeviceApi(object):
 
     # TODO: re-configure to use edge detection for signaling rather than polling
     # noinspection PyPep8Naming,PyUnresolvedReferences
-    def __init__GPIO(self):
+    def __init__device_modules(self):
 
         try:
-            import RPi
-        except ImportError as e:
-            if self.__opts.get(ClientOption.DEBUG):
+            import RPi.GPIO
+            import lcdModule.LCD
+            import serial
+        except (RuntimeError, ImportError) as e:
+            # If the above import fails it means this code is not executing on a physical RPi device.
+            # so the modules are replaced with virtual modules for testing/development/debug purposes
+            # this logic will probably get moved into a CustomImporter module eventually
+            # see file://tinkerAccess/tinker_access_client/tests/README.md for more info
+            try:
                 from debug.VirtualRPi import VirtualRPi as RPi
-            else:
+                from debug.VirtualLcd import VirtualLcd as lcdModule
+                from debug.VirtualSerial import VirtualSerial as serial
+            except Exception as ex:
+                self.__logger.debug('Failed to patch RPi device modules with virtual device modules.')
+                self.__logger.exception(ex)
                 raise e
 
         GPIO = RPi.GPIO
@@ -70,27 +74,10 @@ class DeviceApi(object):
         GPIO.setup(self.__opts.get(ClientOption.PIN_CURRENT_SENSE), GPIO.IN, GPIO.PUD_DOWN)
         self.__GPIO = GPIO
 
-    # TODO: lcdModule needs some love... I'll come back to this later can probably just completely remove it.
-    # noinspection PyPep8Naming,PyUnresolvedReferences
-    def __init__LCD(self):
-
-        try:
-            import lcdModule
-        except ImportError as e:
-            if self.__opts.get(ClientOption.DEBUG):
-                from debug.VirtualLcd import VirtualLcd as lcdModule
-            else:
-                raise e
-
+        # TODO: lcdModule needs some love... I'll come back to this later can probably just completely remove it.
         LCD = lcdModule.LCD
         LCD.lcd_init()
         self.__LCD = LCD
-
-    # noinspection PyPep8Naming,PyUnresolvedReferences
-    def __init__SERIAL(self):
-        import serial
-        if self.__opts.get(ClientOption.DEBUG):
-            from debug.VirtualSerial import VirtualSerial as serial
 
         serial_port_name = self.__opts.get(ClientOption.SERIAL_PORT_NAME)
         serial_port_speed = self.__opts.get(ClientOption.SERIAL_PORT_SPEED)
