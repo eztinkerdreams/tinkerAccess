@@ -2,7 +2,7 @@ import os
 import sys
 
 # TODO: convert to use LoggedPopen utility...
-from subprocess import call, check_output, CalledProcessError
+from subprocess import call, check_output
 
 from Client import Client
 from daemonize import Daemonize
@@ -21,20 +21,21 @@ class ClientDaemon:
         opts = ClientOptionParser().parse_args()[0]
         pid_file = opts.get(ClientOption.PID_FILE)
         foreground = opts.get(ClientOption.DEBUG)
-        logger.debug('Attempting to start the %s daemon...', PackageInfo.pip_package_name)
-        try:
-            client = Client()
-            daemon = Daemonize(
-                app=PackageInfo.pip_package_name, pid=pid_file,
-                action=client.run,
-                foreground=foreground, verbose=True,
-                logger=logger
-            )
-            daemon.start()
-        except Exception as e:
-            logger.debug('%s daemon start failed.', PackageInfo.pip_package_name)
-            logger.exception(e)
-            raise e
+        if not os.path.isfile(pid_file):
+            logger.debug('Attempting to start the %s daemon...', PackageInfo.pip_package_name)
+            try:
+                client = Client()
+                daemon = Daemonize(
+                    app=PackageInfo.pip_package_name, pid=pid_file,
+                    action=client.run,
+                    foreground=foreground, verbose=True,
+                    logger=logger
+                )
+                daemon.start()
+            except Exception as e:
+                logger.debug('%s daemon start failed.', PackageInfo.pip_package_name)
+                logger.exception(e)
+                raise e
 
     @staticmethod
     def stop():
@@ -61,14 +62,7 @@ class ClientDaemon:
         logger = ClientLogger.setup()
         logger.debug('Attempting to restart the %s daemon...', PackageInfo.pip_package_name)
         try:
-            # TODO: this needs some work, the start method is creating duplicate threads
-
-            # TODO: this try/catch blocks will be removed eventually
-            try:
-                ClientDaemon.stop()
-            except Exception:
-                pass
-
+            ClientDaemon.stop()
             ClientDaemon.start()
 
         except Exception as e:

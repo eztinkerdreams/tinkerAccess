@@ -9,6 +9,7 @@ from ClientOption import ClientOption
 
 ClientOptionDefaults = {
     ClientOption.DEBUG: False,
+    ClientOption.DEBUG_PORT: 2020,
     ClientOption.CONFIG_FILE: '/etc/{0}.conf'.format(PackageInfo.pip_package_name),
     ClientOption.PID_FILE: '/var/run/{0}.pid'.format(PackageInfo.pip_package_name),
     ClientOption.LOG_FILE: '/var/log/{0}.log'.format(PackageInfo.pip_package_name),
@@ -79,6 +80,13 @@ class ClientOptionParser(object):
                           default=ClientOptionDefaults[ClientOption.DEBUG],
                           dest=ClientOption.DEBUG,
                           action='store_true')
+
+        self.__parser.add_option('--debug-port',
+                         help='The port to host the virtual device UI in debug mode [default:\'%default\']',
+                         default=ClientOptionDefaults[ClientOption.DEBUG_PORT],
+                         dest=ClientOption.DEBUG_PORT,
+                         type='int',
+                         action='store')
 
         self.__parser.add_option('--log-file',
                           help='the path and name of the log file [default:\'%default\']',

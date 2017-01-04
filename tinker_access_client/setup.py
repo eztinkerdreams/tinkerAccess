@@ -1,11 +1,11 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.command.install import install as _install
 
 from tinker_access_client.ServiceInstaller import ServiceInstaller
 from tinker_access_client.PackageInfo import PackageInfo
 
 
-
+# noinspection PyClassHasNoInit,PyPep8Naming
 class install(_install):
     def run(self):
         _install.run(self)
@@ -35,9 +35,7 @@ config = {
         'pyserial==3.2.1',
         'requests==2.12.4'
     ],
-    'packages': [
-        PackageInfo.python_package_name
-    ],
+    'packages': find_packages(exclude=('tests*',)),
     'test_suite': 'nose.collector',
     'tests_require': [
         'daemonize==2.4.7',
