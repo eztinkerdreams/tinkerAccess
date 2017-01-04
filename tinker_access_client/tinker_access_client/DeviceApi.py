@@ -30,8 +30,8 @@ class DeviceApi(object):
             self.__init__SERIAL()
 
         except ImportError as e:
-            self.__logger.error('RPi modules will only load from a physical RPi device. \n'
-                                'Use the --debug flag to simulate RPi modules (i.e. GPIO) for development/testing '
+            self.__logger.error('Some modules will only load from a physical RPi device. i.e. RPi.GPIO \n'
+                                'Use the --debug flag to simulate RPi modules for development/testing '
                                 'purposes on non RPi devices.')
             self.__logger.exception(e)
             raise e
@@ -48,8 +48,8 @@ class DeviceApi(object):
     def __init__GPIO(self):
 
         try:
-            import RPi
-        except ImportError as e:
+            import RPi.GPIO
+        except (RuntimeError, ImportError) as e:
             if self.__opts.get(ClientOption.DEBUG):
                 from debug.VirtualRPi import VirtualRPi as RPi
             else:
@@ -75,8 +75,8 @@ class DeviceApi(object):
     def __init__LCD(self):
 
         try:
-            import lcdModule
-        except ImportError as e:
+            import lcdModule.LCD
+        except (RuntimeError, ImportError) as e:
             if self.__opts.get(ClientOption.DEBUG):
                 from debug.VirtualLcd import VirtualLcd as lcdModule
             else:
@@ -88,6 +88,7 @@ class DeviceApi(object):
 
     # noinspection PyPep8Naming,PyUnresolvedReferences
     def __init__SERIAL(self):
+
         import serial
         if self.__opts.get(ClientOption.DEBUG):
             from debug.VirtualSerial import VirtualSerial as serial

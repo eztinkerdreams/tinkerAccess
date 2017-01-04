@@ -1,10 +1,11 @@
-
+# noinspection PyClassHasNoInit
 class ClientOption:
     DEBUG = 'debug'
     PID_FILE = 'pid_file'
     LOG_FILE = 'log_file'
     LOG_LEVEL = 'log_level'
     DEVICE_ID = 'device_id'
+    DEBUG_PORT = 'debug_port'
     PIN_LOGOUT = 'pin_logout'
     CONFIG_FILE = 'config_file'
     PIN_LED_RED = 'pin_led_red'
