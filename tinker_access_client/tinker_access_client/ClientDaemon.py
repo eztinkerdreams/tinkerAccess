@@ -1,5 +1,7 @@
 import os
 import sys
+import socket
+
 
 # TODO: convert to use LoggedPopen utility...
 from subprocess import call, check_output
@@ -21,6 +23,12 @@ class ClientDaemon:
         opts = ClientOptionParser().parse_args()[0]
         pid_file = opts.get(ClientOption.PID_FILE)
         foreground = opts.get(ClientOption.DEBUG)
+
+        # TODO: if there is an orphan pid.. than we will never start again,
+        # need to add some code to destroy the pid if it already exists
+        # or throw a meaningful exception
+        # need to add test around starting the client twice, or use semephore pattern etc...
+
         if not os.path.isfile(pid_file):
             logger.debug('Attempting to start the %s daemon...', PackageInfo.pip_package_name)
             try:
@@ -76,6 +84,15 @@ class ClientDaemon:
     @staticmethod
     def status():
         logger = ClientLogger.setup()
+
+        try:
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.connect(('127.0.0.1', 8089))
+            client_socket.send('hello')
+        except Exception as e:
+            logger.exception(e)
+
+
         opts = ClientOptionParser().parse_args()[0]
         pid_file = opts.get(ClientOption.PID_FILE)
         logger.debug('Attempting to check the %s daemon status...', PackageInfo.pip_package_name)
