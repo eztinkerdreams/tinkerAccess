@@ -1,10 +1,15 @@
 import os
 import sys
+import errno
+import socket
+from socket import error as socket_error
+
 
 # TODO: convert to use LoggedPopen utility...
 from subprocess import call, check_output
 
 from Client import Client
+from Command import Command
 from daemonize import Daemonize
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
@@ -13,6 +18,8 @@ from ClientOptionParser import ClientOptionParser
 
 
 # noinspection PyClassHasNoInit
+
+
 class ClientDaemon:
     @staticmethod
     def start():
@@ -21,6 +28,12 @@ class ClientDaemon:
         opts = ClientOptionParser().parse_args()[0]
         pid_file = opts.get(ClientOption.PID_FILE)
         foreground = opts.get(ClientOption.DEBUG)
+
+        # TODO: if there is an orphan pid.. than we will never start again,
+        # need to add some code to destroy the pid if it already exists
+        # or throw a meaningful exception
+        # need to add test around starting the client twice, or use semephore pattern etc...
+
         if not os.path.isfile(pid_file):
             logger.debug('Attempting to start the %s daemon...', PackageInfo.pip_package_name)
             try:
@@ -39,6 +52,8 @@ class ClientDaemon:
                 logger.debug('%s daemon start failed.', PackageInfo.pip_package_name)
                 logger.exception(e)
                 raise e
+        else:
+            raise RuntimeError('pid already exists...')   # TODO better message needed
 
     @staticmethod
     def stop():
@@ -76,7 +91,46 @@ class ClientDaemon:
     @staticmethod
     def status():
         logger = ClientLogger.setup()
-        opts = ClientOptionParser().parse_args()[0]
+        (opts, args) = ClientOptionParser().parse_args()
+
+        ################################################################################################################
+        # TODO: refactor to common util to send/receive message from client process
+        ################################################################################################################
+        client_socket = None
+        try:
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            #client_socket.settimeout(2)
+            client_socket.settimeout(5)
+            logger.debug('connecting...: %s', client_socket.getsockname())
+            client_socket.connect(('', 8089))
+            logger.debug('connected....')
+            logger.debug('sending.......: %s', args[0])
+            x = client_socket.send(args[0])
+            logger.debug('sent.......: %s', x)
+
+            logger.debug('recv.......')
+            data = client_socket.recv(1024)
+            logger.debug('data.......')
+            ## TODO: this blocks...  which means it will cause issues with the service implementation
+            ## we will need to do thread start, thread. join I think...?
+            ## status command should return the current state of the machine...
+            logger.debug('received: %s', data)
+            client_socket.shutdown(socket.SHUT_RDWR)
+
+        except socket_error as e:
+            if e.errno != errno.ENOTCONN:
+                logger.exception(e)
+                raise e
+
+        except Exception as e:
+            logger.exception(e)
+            raise e
+
+        finally:
+            if client_socket:
+                client_socket.close()
+        ################################################################################################################
+
         pid_file = opts.get(ClientOption.PID_FILE)
         logger.debug('Attempting to check the %s daemon status...', PackageInfo.pip_package_name)
         try:
