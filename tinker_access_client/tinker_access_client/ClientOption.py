@@ -7,6 +7,7 @@ class ClientOption:
     DEVICE_ID = 'device_id'
     DEBUG_PORT = 'debug_port'
     PIN_LOGOUT = 'pin_logout'
+    CLIENT_PORT = 'client_port'
     CONFIG_FILE = 'config_file'
     PIN_LED_RED = 'pin_led_red'
     PIN_LED_BLUE = 'pin_led_blue'
