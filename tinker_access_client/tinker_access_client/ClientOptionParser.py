@@ -19,6 +19,7 @@ ClientOptionDefaults = {
     ClientOption.SERIAL_PORT_NAME: '/dev/ttyUSB0',
     ClientOption.SERIAL_PORT_SPEED: 9600,
     ClientOption.PIN_LOGOUT: 16,
+    ClientOption.CLIENT_PORT: 8089,
     ClientOption.PIN_POWER_RELAY: 17,
     ClientOption.PIN_LED_RED: 21,
     ClientOption.PIN_LED_GREEN: 19,
@@ -87,6 +88,14 @@ class ClientOptionParser(object):
                          dest=ClientOption.DEBUG_PORT,
                          type='int',
                          action='store')
+
+        self.__parser.add_option('--client-port',
+                                 help='The port to listen for external commands, i.e. (status, config, reload etc...)'
+                                      ' [default:\'%default\']',
+                                 default=ClientOptionDefaults[ClientOption.CLIENT_PORT],
+                                 dest=ClientOption.CLIENT_PORT,
+                                 type='int',
+                                 action='store')
 
         self.__parser.add_option('--log-file',
                           help='the path and name of the log file [default:\'%default\']',

@@ -11,7 +11,11 @@
 # between RPi's modules (i.e. RFID reader, LCD, power relays etc..) and the remote tinker_access_server.
 ### END INIT INFO
 
-from TinkerAccessClient import TinkerAccessClient
+from CommandHandler import CommandHandler
+
+
+def run():
+    CommandHandler().run()
 
 if __name__ == '__main__':
-    TinkerAccessClient().run()
+    run()

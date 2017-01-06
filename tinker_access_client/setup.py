@@ -47,7 +47,7 @@ config = {
     ],
     'entry_points': {
         'console_scripts': [
-            '{0}={1}.CommandLineSupport:run'.format(PackageInfo.pip_package_name, PackageInfo.python_package_name)
+            '{0}={1}.Service:run'.format(PackageInfo.pip_package_name, PackageInfo.python_package_name)
         ]
     },
     'cmdclass': {

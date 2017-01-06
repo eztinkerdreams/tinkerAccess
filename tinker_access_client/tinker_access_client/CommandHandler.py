@@ -8,9 +8,8 @@ from ClientOptionParser import ClientOptionParser
 
 
 # noinspection PyClassHasNoInit
-class TinkerAccessClient(object):
+class CommandHandler(object):
 
-    # TODO: this can be static
     # noinspection PyMethodMayBeStatic
     def run(self):
         logger = ClientLogger.setup()

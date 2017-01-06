@@ -15,4 +15,5 @@ class Command(object):
             if not key.startswith('__'):
                 if command == value['command']:
                     return value
-        return command
+
+        return None
