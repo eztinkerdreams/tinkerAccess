@@ -77,18 +77,6 @@ class TestTinkerAccessClient(unittest.TestCase):
 
     @patch.object(sys, 'exit')
     @patch.object(ClientLogger, 'setup')
-    @patch.object(ClientOptionParser, '__new__')
-    def test_logsUnknownCommands(self, mock_parser, mock_setup, mock_exit):
-        mock_parser.return_value.parse_args.return_value = ({}, ['foo'])
-        TinkerAccessClient().run()
-
-        logger = mock_setup.return_value
-        self.assertEqual(logger.debug.call_count, 2)
-        self.assertEqual(logger.exception.call_count, 1)
-        mock_exit.assert_called_with(1)
-
-    @patch.object(sys, 'exit')
-    @patch.object(ClientLogger, 'setup')
     @patch.object(ClientDaemon, 'start')
     @patch.object(ClientOptionParser, '__new__')
     def test_logsUnexpectedExceptions(self, mock_parser, mock_start, mock_setup, mock_exit):
