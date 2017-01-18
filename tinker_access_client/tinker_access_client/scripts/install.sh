@@ -44,8 +44,8 @@ if hash service 2>/dev/null; then
 fi
 
 #enable auto-updates
-crontab_name="${pip_package_name}-update"
-if [[ ! `crontab -l` == *"${update_script}"* ]]; then
-    crontab -l | { echo "*/1 * * * * PATH=$PATH:/usr/bin/env MAILTO=\"\" \"${update_script}\" 2>&1 | tee -a \"/var/log/${crontab_name}.log\" \n"; } | crontab -
-fi
+#crontab_name="${pip_package_name}-update"
+#if [[ ! `crontab -l` == *"${update_script}"* ]]; then
+#    crontab -l | { echo "*/1 * * * * PATH=$PATH:/usr/bin/env MAILTO=\"\" \"${update_script}\" 2>&1 | tee -a \"/var/log/${crontab_name}.log\" \n"; } | crontab -
+#fi
 

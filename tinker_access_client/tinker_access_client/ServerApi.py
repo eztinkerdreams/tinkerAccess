@@ -3,7 +3,7 @@ from LoggedRequest import LoggedRequest
 from UserRegistrationException import UserRegistrationException
 from UnauthorizedAccessException import UnauthorizedAccessException
 
-
+#TODO: rename this to a more meaningful name, i.e. RemoteServer, TinkerAccessServerApi etc..
 class ServerApi(object):
     def __init__(self, server_address, device_id):
         self.__logger = ClientLogger.setup()
