@@ -16,6 +16,7 @@ from Command import Command
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from DeviceApi import DeviceApi, Channel
+from CommandHandler import CommandHandler
 from ClientOptionParser import ClientOptionParser, ClientOption
 
 
@@ -28,7 +29,6 @@ class Client(Machine):
     def __init__(self):
         self.__logger = ClientLogger.setup()
         self.__opts = ClientOptionParser().parse_args()[0]
-        self.__deviceApi = DeviceApi(self.__opts)
         self.__should_exit = False
 
         states = []
@@ -38,6 +38,7 @@ class Client(Machine):
 
         Machine.__init__(self, states=states, initial=State.INITIALIZED)
 
+    #This will be moved to some other class I am sure...
     def run_listener(self):
         self.__logger.debug('Attempting to establish %s listener...', PackageInfo.pip_package_name)
 
@@ -101,40 +102,36 @@ class Client(Machine):
                 server.shutdown(socket.SHUT_RDWR)
                 server.close()
 
-    def run_client(self):
-        try:
-            wait = 5
-            counter = 0
-            while not self.__should_exit and counter < 720:
-                counter += 1
-                time.sleep(wait)
-                self.__logger.debug('%s daemon running for %s seconds...', PackageInfo.pip_package_name, counter * wait)
+    def __handle_status_command(self):
+        pass
 
-                if not self.__should_exit:
-                    self.__logger.debug('will stop client...')
-
-        except (SystemExit, KeyboardInterrupt) as e:
-            self.__logger.debug('%s daemon stopping...', PackageInfo.pip_package_name)
-            raise e
-
-        except Exception as e:
-            self.__logger.debug('Unable to start the %s daemon.', PackageInfo.pip_package_name)
-            self.__logger.exception(e)
-            raise e
-
-    def run(self):
-        try:
-            #TODO: probably reverse this order?...
-            thread.start_new_thread(self.run_listener, ())
-            self.run_client()
-        except Exception as e:
-            self.__logger.exception(e)
-            raise e
+    def __handle_stop_command(self):
+        self.__stop()
 
     def __stop(self):
         self.__should_exit = True
+        #TODO: wait for client status(self.state) to be done before we exit...
 
-        logout_coast_time = self.__opts.get(ClientOption.LOGOUT_COAST_TIME)
-        #wait for client state to be done, max wait time is logout coast time
-        #while self.state != done..
+    def __run(self):
+        with CommandHandler() as handler:
+            handler.on(Command.STOP, self.__handle_stop_command)
+            handler.on(Command.STATUS, self.__handle_status_command)
+            with DeviceApi(self.__opts) as device:
+                #device.on('channdle', 'handler')
+                #etc....
+
+                while not self.__should_exit:
+
+                    #TODO: remove this message when the complete implementation is final...
+                    self.__logger.debug('%s is running...', PackageInfo.pip_package_name)
+
+                    device.wait_for_edge()
+
+    def run(self):
+        while not self.__should_exit:
+            try:
+                self.__run()
+            except Exception as e:
+                self.__logger.exception(e)
+
 
