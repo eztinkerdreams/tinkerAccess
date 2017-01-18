@@ -16,6 +16,8 @@ pin_current_sense = 12
 serial_port_name = '/dev/ttyUSB0'
 serial_port_speed = 9600
 
+## TODO: add test for __enter__, __exit__ & refactor to use context sytanx in these test with Device() as device etc..
+
 
 # noinspection PyUnresolvedReferences,PyPep8Naming,PyShadowingNames
 class DeviceApiTests(unittest.TestCase):
