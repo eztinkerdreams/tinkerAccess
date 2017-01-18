@@ -1,3 +1,4 @@
+import time
 import json
 from ClientLogger import ClientLogger
 from ClientOptionParser import ClientOption
@@ -84,6 +85,33 @@ class DeviceApi(object):
         self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
         self.__serial_connection.flushInput()
         self.__serial_connection.flushOutput()
+
+    ##TODO: add test for __enter__, __exit__
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        #do cleanup, logout coast down etc..
+
+        logout_coast_time = self.__opts.get(ClientOption.LOGOUT_COAST_TIME)
+        #wait for client state to be done, max wait time is logout coast time
+        #while self.state != done..
+        pass
+
+    #def __del__(self):
+
+    def wait_for_edge(self):
+        # TODO: implement correctly with the virtual/mock device self.__GPIO.wait_for_edge()
+        # needs to get list of all configufed channels and wireup the function
+        #self.__GPIO.wait_for_edge()  # Blocks until next edge is detected
+
+        time.sleep(1) #Remove once the above code is implemented to block correctly
+
+
+
+
+
 
     def write(self, channel, *args):
         channel_name = Channel(channel)

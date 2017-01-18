@@ -22,16 +22,16 @@ from ClientOptionParser import ClientOptionParser
 class ClientDaemon:
 
     @staticmethod
-    def start():
-        logger = ClientLogger.setup()
-        opts = ClientOptionParser().parse_args()[0]
-        pid_file = opts.get(ClientOption.PID_FILE)
-        foreground = opts.get(ClientOption.DEBUG)
+    def start(**kwargs):
+        opts = kwargs['opts'] if kwargs['opts'] else {}
 
+        logger = ClientLogger.setup()
         if not ClientDaemon.__status():
             logger.debug('Attempting to start %s...', PackageInfo.pip_package_name)
             try:
                 client = Client()
+                pid_file = opts.get(ClientOption.PID_FILE)
+                foreground = opts.get(ClientOption.DEBUG)
                 daemon = Daemonize(
                     app=PackageInfo.pip_package_name,
                     pid=pid_file,
@@ -52,18 +52,19 @@ class ClientDaemon:
             sys.exit(1)
 
     @staticmethod
-    def stop():
-        logger = ClientLogger.setup()
-        opts = ClientOptionParser().parse_args()[0]
+    def stop(**kwargs):
+        opts = kwargs['opts'] if kwargs['opts'] else {}
 
         # Attempt to gracefully shutdown...
+        logger = ClientLogger.setup()
         logger.debug('Attempting to stop %s...', PackageInfo.pip_package_name)
         if ClientDaemon.__status():
             ClientDaemon.__stop()
 
         # if any processes still exists at this point... we will become more persuasive...
         try:
-            for pid in check_output(['pgrep', '-f', '{0} start'.format(PackageInfo.pip_package_name)]).splitlines():
+            for pid in check_output(['pgrep', '-f', '{0} start'.format(
+                    PackageInfo.pip_package_name)]).splitlines():
                 try:
                     logger.debug('Attempting to kill pid: %s', pid)
                     call(['kill', '-9', pid])
@@ -72,7 +73,7 @@ class ClientDaemon:
         except CalledProcessError:
             pass
 
-        # if the pid file still exist, nuke it from orbit
+        # if the pid file still exist at this point... nuke it from orbit!
         pid_file = opts.get(ClientOption.PID_FILE)
         if os.path.isfile(pid_file):
             try:
@@ -97,11 +98,11 @@ class ClientDaemon:
             logger.exception(e)
             raise e
 
+    # noinspection PyUnusedLocal
     @staticmethod
-    def status():
+    def status(**kwargs):
         logger = ClientLogger.setup()
         logger.debug('Attempting to check %s status...', PackageInfo.pip_package_name)
-
         status = ClientDaemon.__status()
         if status:
             sys.stdout.write('Status: {0}\n'.format(status))
