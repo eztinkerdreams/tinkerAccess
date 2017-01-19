@@ -26,7 +26,7 @@ class TestServiceInstaller(unittest.TestCase):
         mock_chmod.assert_any_call('{0}tinker_access_client/Service.py'.format(install_lib), 0755)
 
         logger = mock_setup.return_value
-        self.assertEquals(logger.debug.call_count, 3)
+        self.assertEquals(logger.debug.call_count, 2)
 
     @patch.object(os, 'chmod')
     @patch.object(subprocess, 'Popen')
@@ -53,7 +53,6 @@ class TestServiceInstaller(unittest.TestCase):
         self.assertRaises(RuntimeError, ServiceInstaller.install, '')
 
         logger = mock_setup.return_value
-        self.assertEquals(logger.debug.call_count, 1)
         self.assertEqual(logger.exception.call_count, 1)
 
 
