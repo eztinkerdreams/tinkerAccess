@@ -21,8 +21,7 @@ from ClientOptionParser import ClientOptionParser, Command
 
 def run():
     logger = ClientLogger.setup()
-    cmd = ClientOptionParser().parse_args()[1][0]
-    logger.debug('Attempting to handle %s \'%s\' command...', PackageInfo.pip_package_name, cmd)
+    (opts, args) = ClientOptionParser().parse_args()
     try:
         with CommandHandler() as handler:
             handler.on(Command.STOP, ClientDaemon.stop)
@@ -35,17 +34,21 @@ def run():
             #handler.on(Command.UNINSTALL, ClientDaemon.start)
             #handler.on(Command.RECONFIGURE, ClientDaemon.start)
             #handler.on(Command.FORCE_RELOAD, ClientDaemon.start)
-            handler.wait()
+
+            handler.wait(opts, args)
 
     except (KeyboardInterrupt, SystemExit):
         pass
 
     except Exception as e:
-        logger.debug('%s failed to handle \'%s\' command.', PackageInfo.pip_package_name, cmd)
+        logger.debug('%s failed to handle the command.', PackageInfo.pip_package_name)
         logger.exception(e)
         sys.stdout.write(str(e))
         sys.stdout.flush()
         sys.exit(1)
+
+
+    #TODO: logging.shutDown() might be needed in a finally block
 
 if __name__ == '__main__':
     run()

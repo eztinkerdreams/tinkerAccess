@@ -20,5 +20,4 @@ class TestSetup(unittest.TestCase):
 
         logger = mock_setup.return_value
         self.assertTrue(mock_start.call_count, 1)
-        self.assertTrue(logger.debug.call_count, 1)
 
