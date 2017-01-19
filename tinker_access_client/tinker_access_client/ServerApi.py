@@ -11,8 +11,6 @@ class ServerApi(object):
         self.__device_id = device_id
 
     def login(self, user_badge_code):
-        self.__logger.debug('Attempting login for \'%s\' on device \'%s\'...', user_badge_code, self.__device_id)
-
         try:
             url = "%s/device/%s/code/%s" % (self.__server_address, self.__device_id, user_badge_code)
             response = LoggedRequest.get(url)
@@ -39,8 +37,6 @@ class ServerApi(object):
         raise UnauthorizedAccessException
 
     def logout(self, user_id):
-        self.__logger.debug('Attempting logout for \'%s\'...', user_id)
-
         try:
             url = "%s/device/%s/logout/%s" % (self.__server_address, self.__device_id, user_id)
             LoggedRequest.get(url)
@@ -52,9 +48,6 @@ class ServerApi(object):
         self.__logger.debug('Logout succeeded.')
 
     def register_user(self, trainer_id, trainer_badge_code, user_badge_code):
-        self.__logger.debug('Attempting to register \'%s\' on device \'%s\'...',
-                            user_badge_code,
-                            self.__device_id)
         try:
             url = "%s/admin/marioStar/%s/%s/%s/%s" % (
                 self.__server_address, trainer_id, trainer_badge_code, self.__device_id, user_badge_code)
