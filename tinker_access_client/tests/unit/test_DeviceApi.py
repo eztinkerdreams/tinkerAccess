@@ -20,6 +20,7 @@ serial_port_speed = 9600
 
 
 # noinspection PyUnresolvedReferences,PyPep8Naming,PyShadowingNames
+@unittest.skip("temporarily disabled")
 class DeviceApiTests(unittest.TestCase):
     def setUp(self):
         add_custom_importer()
