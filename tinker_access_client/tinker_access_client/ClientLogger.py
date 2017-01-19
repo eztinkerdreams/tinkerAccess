@@ -7,7 +7,6 @@ from ClientOptionParser import ClientOptionParser, ClientOption
 
 
 class ClientLogger(object):
-
     @staticmethod
     def setup(phase=None):
         logger = logging.getLogger(PackageInfo.python_package_name)
@@ -25,7 +24,9 @@ class ClientLogger(object):
 
         logger.addFilter(ContextFilter(opts))
 
-        sys_log_format = '%(asctime)s %(hostname)s %(app_id)s %(version)s %(device_id)s %(message)s'
+        sys_log_format = \
+            '%(asctime)s %(hostname)s %(app_id)s %(version)s %(device_id)s %(device_name)s ' \
+            '%(user_id)s %(user_name)s %(badge_code)s %(message)s'
         sys_log_formatter = logging.Formatter(sys_log_format, datefmt='%FT%T')
 
         # paperTrail

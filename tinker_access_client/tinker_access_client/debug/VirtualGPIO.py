@@ -5,7 +5,7 @@ from tinker_access_client.ClientLogger import ClientLogger
 from virtual_device.VirtualDeviceServer import VirtualDeviceServer
 
 
-class _VirtualGPIO(object):
+class VirtualGPIO(object):
     # https://sourceforge.net/p/raspberry-gpio-python/code/ci/default/tree/source/c_gpio.h
 
     # define MODE_UNKNOWN -1
@@ -36,7 +36,7 @@ class _VirtualGPIO(object):
     PUD_DOWN = 1
     PUD_UP = 2
 
-    #TODO: confirm these values
+    # TODO: confirm these values
     RISING = 1
     FALLING = 2
     BOTH = 3
@@ -62,12 +62,13 @@ class _VirtualGPIO(object):
 
     def add_event_detect(self, *args):
         pass
-        
+
     def add_event_callback(self, *args):
         pass
 
 
 # # noinspection PyClassHasNoInit
-class VirtualRPi:
-    GPIO = _VirtualGPIO()
-
+# class VirtualRPi:
+#     GPIO = _VirtualGPIO()
+#
+# GPIO = _VirtualGPIO()

@@ -10,6 +10,10 @@ class ContextFilter(logging.Filter):
         self.__device_id = opts.get(ClientOption.DEVICE_ID)
         self.__app_id = PackageInfo.pip_package_name
         self.__version = PackageInfo.version
+        self.__user_info = None
+
+    def update_user_context(self, user_info):
+        self.__user_info = user_info
 
     def filter(self, record):
         record.hostname = self.__hostname
@@ -17,10 +21,16 @@ class ContextFilter(logging.Filter):
         record.device_id = self.__device_id
         record.version = self.__version
 
-        # TODO: be nice to have action, user_id, badge_id etc..
-        record.user_id = None
-        record.badge_id = None
-        record.user_name = None
-        record.action = None
+        if self.__user_info:
+            record.user_id = self.__user_info.get('user_id')
+            record.user_name = self.__user_info.get('user_name')
+            record.badge_code = self.__user_info.get('badge_code')
+            record.device_name = self.__user_info.get('device_name')
+        else:
+            record.user_id = \
+                record.user_name = \
+                record.badge_id = \
+                record.badge_code = \
+                record.device_name = None
 
         return True
