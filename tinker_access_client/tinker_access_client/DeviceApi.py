@@ -1,5 +1,6 @@
 import time
 import json
+import threading
 from ClientLogger import ClientLogger
 from ClientOptionParser import ClientOption
 
@@ -18,6 +19,8 @@ class Channel(object):
 class DeviceApi(object):
     def __init__(self, opts):
         self.__opts = opts
+        self.__fault = False
+        self.__edge_detected = False
         self.__logger = ClientLogger.setup()
         self.__logger.debug('Attempting device initialization...')
         try:
@@ -43,29 +46,49 @@ class DeviceApi(object):
     def __init__device_modules(self):
 
         try:
-            import RPi.GPIO
-            import lcdModule.LCD
-            import serial
-        except (RuntimeError, ImportError) as e:
-            # If the above import fails it means this code is not executing on a physical RPi device.
-            # so the modules are replaced with virtual modules for testing/development/debug purposes
-            # this logic will probably get moved into a CustomImporter module eventually
-            # see file://tinkerAccess/tinker_access_client/tests/README.md for more info
-            try:
-                from debug.VirtualRPi import VirtualRPi as RPi
-                from debug.VirtualLcd import VirtualLcd as lcdModule
-                from debug.VirtualSerial import VirtualSerial as serial
-            except Exception as ex:
-                self.__logger.debug('Failed to patch RPi device modules with virtual device modules.')
-                self.__logger.exception(ex)
-                raise e
 
-        GPIO = RPi.GPIO
+            import RPi.GPIO as GPIO
+            # import lcdModule.LCD
+            # import serial
+            # from RPi import GPIO
+            from debug.VirtualLcd import VirtualLcd as lcdModule
+            from debug.VirtualSerial import VirtualSerial as serial
+
+
+
+            # TODO: print board info after init...
+            # To discover information about your RPi:
+            # GPIO.RPI_INFO
+            # To discover the Raspberry Pi board revision:
+            # GPIO.RPI_INFO['P1_REVISION']
+            # GPIO.RPI_REVISION    (deprecated)
+            # To discover the version of RPi.GPIO:
+            # GPIO.VERSION
+
+            # import RPi.GPIO
+            # import lcdModule.LCD
+            # import serial
+        except (RuntimeError, ImportError) as e:
+            self.__logger.exception(e)
+            # raise e
+            # # If the above import fails it means this code is not executing on a physical RPi device.
+            # # so the modules are replaced with virtual modules for testing/development/debug purposes
+            # # this logic will probably get moved into a CustomImporter module eventually
+            # # see file://tinkerAccess/tinker_access_client/tests/README.md for more info
+            # try:
+            #     from debug.VirtualRPi import VirtualRPi as RPi
+            #     from debug.VirtualLcd import VirtualLcd as lcdModule
+            #     from debug.VirtualSerial import VirtualSerial as serial
+            # except Exception as ex:
+            #     self.__logger.debug('Failed to patch RPi device modules with virtual device modules.')
+            #     self.__logger.exception(ex)
+            #     raise e
+
         GPIO.setmode(GPIO.BCM)
 
         # TODO: remove once lcdModule is fixed fixed to not also call cleanup
-        GPIO.cleanup()
-        GPIO.setWarnings(False)
+        # GPIO.cleanup()
+        # GPIO.setwarnings(False)
 
         GPIO.setup(self.__opts.get(ClientOption.PIN_LED_RED), GPIO.OUT)
         GPIO.setup(self.__opts.get(ClientOption.PIN_LED_BLUE), GPIO.OUT)
@@ -73,7 +96,7 @@ class DeviceApi(object):
         GPIO.setup(self.__opts.get(ClientOption.PIN_POWER_RELAY), GPIO.OUT)
         GPIO.setup(self.__opts.get(ClientOption.PIN_LOGOUT), GPIO.IN, GPIO.PUD_DOWN)
         GPIO.setup(self.__opts.get(ClientOption.PIN_CURRENT_SENSE), GPIO.IN, GPIO.PUD_DOWN)
-        self.__GPIO = GPIO
+        self.GPIO = GPIO
 
         # TODO: lcdModule needs some love... I'll come back to this later can probably just completely remove it.
         LCD = lcdModule.LCD
@@ -92,28 +115,129 @@ class DeviceApi(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        #do cleanup, logout coast down etc..
+        self.__do_cleanup()
 
+    # def __del__(self):
+    #     self.__do_cleanup()
+
+    def __do_cleanup(self):
         logout_coast_time = self.__opts.get(ClientOption.LOGOUT_COAST_TIME)
-        #wait for client state to be done, max wait time is logout coast time
-        #while self.state != done..
-        pass
+        # wait for client state to be done, max wait time is logout coast time
+        # while self.state != done..
+        self.GPIO.cleanup()
 
-    #def __del__(self):
+    def __do_callback(self, call_back, *args, **kwargs):
+        try:
+            call_back(args, kwargs)
+        except Exception as e:
+            self.__logger.debug('Failed to execute callback.')
+            self.__logger.exception(e)
+        finally:
+            self.__edge_detected = True
 
-    def wait_for_edge(self):
-        # TODO: implement correctly with the virtual/mock device self.__GPIO.wait_for_edge()
-        # needs to get list of all configufed channels and wireup the function
-        #self.__GPIO.wait_for_edge()  # Blocks until next edge is detected
+    def __poll_for_serial_input(self, call_back):
+        while True:
+            try:
+                badge_code = self.read(Channel.SERIAL)
+                if badge_code:
+                    self.__do_callback(call_back, None, {'badge_code': badge_code})
+            except Exception as e:
+                self.__logger.exception(e)
+            time.sleep(1)
 
-        time.sleep(1) #Remove once the above code is implemented to block correctly
+    def __read_from_serial(self):
+        serial_connection = self.__serial_connection
 
+        if serial_connection.inWaiting() > 1:
+            value = serial_connection.readline().strip()[-12:]
+            serial_connection.flushInput()
+            serial_connection.flushOutput()
+            return value
 
+        return None
 
+    # noinspection PyPep8Naming
+    def __read_from_pin(self, pin, expected_state):
+        GPIO = self.GPIO
+        expected_state = GPIO.LOW if not expected_state else GPIO.HIGH
+        return GPIO.input(pin) == expected_state
 
+    # noinspection PyPep8Naming
+    def __write_to_led(self, red, green, blue):
+        GPIO = self.GPIO
+        GPIO.output(self.__opts.get(ClientOption.PIN_LED_RED), red)
+        GPIO.output(self.__opts.get(ClientOption.PIN_LED_GREEN), green)
+        GPIO.output(self.__opts.get(ClientOption.PIN_LED_BLUE), blue)
 
+    # noinspection PyPep8Naming
+    def __write_to_lcd(self, first_line, second_line):
+        LCD = self.__LCD
+        LCD.lcd_string(first_line, LCD.LCD_LINE_1)
+        LCD.lcd_string(second_line, LCD.LCD_LINE_2)
+
+    # noinspection PyPep8Naming
+    def __write_to_pin(self, pin, state):
+        GPIO = self.GPIO
+        state = GPIO.LOW if not state else GPIO.HIGH
+        GPIO.output(pin, state)
+
+    def on(self, channel, **kwargs):
+        pin = kwargs.get('pin')
+        direction = kwargs.get('direction')
+        call_back = kwargs.get('call_back')
+
+        GPIO = self.GPIO
+        if channel is Channel.PIN and pin and direction and call_back:
+
+            def edge_detected(*args, **kwargs):
+                self.__do_callback(call_back, args, kwargs)
+
+            GPIO.add_event_detect(pin, direction, callback=edge_detected, bouncetime=250)
+
+        elif channel is Channel.SERIAL and direction is self.GPIO.IN and call_back:
+            poll_for_serial_input = threading.Thread(
+                name='poll_for_serial_input',
+                target=self.__poll_for_serial_input,
+                args=(call_back,)
+            )
+            poll_for_serial_input.daemon = True
+            poll_for_serial_input.start()
+
+        else:
+            raise NotImplementedError
+
+    def read(self, channel, *args):
+        if self.__fault:
+            return
+
+        channel_name = Channel(channel)
+        try:
+
+            if channel == Channel.SERIAL:
+                value = self.__read_from_serial()
+
+            elif channel == Channel.PIN:
+                pin = args[0] if len(args) >= 1 else None
+                expected_state = args[1] if len(args) >= 2 else True
+                value = self.__read_from_pin(pin, expected_state)
+
+            else:
+                raise NotImplementedError
+
+        except Exception as e:
+            self.__logger.debug('Read from %s failed with args \'%s\'.', channel_name, args)
+            self.__logger.exception(e)
+            raise e
+
+        if value is not None and value is not False:
+            self.__logger.debug('Successfully read \'%s\' from %s.', value, channel_name)
+
+        return value
 
     def write(self, channel, *args):
+        if self.__fault:
+            return
+
         channel_name = Channel(channel)
         self.__logger.debug('Attempting to write to \'%s\' with args %s...', channel_name, args)
 
@@ -135,7 +259,7 @@ class DeviceApi(object):
                 self.__write_to_pin(pin, state)
 
             else:
-                raise NotImplemented
+                raise NotImplementedError
 
         except Exception as e:
             self.__logger.debug('Write to \'%s\' failed.', channel_name, args)
@@ -144,65 +268,10 @@ class DeviceApi(object):
 
         self.__logger.debug('Write to \'%s\' succeeded.', channel_name)
 
-    # noinspection PyPep8Naming
-    def __write_to_led(self, red, green, blue):
-        GPIO = self.__GPIO
-        GPIO.output(self.__opts.get(ClientOption.PIN_LED_RED), red)
-        GPIO.output(self.__opts.get(ClientOption.PIN_LED_GREEN), green)
-        GPIO.output(self.__opts.get(ClientOption.PIN_LED_BLUE), blue)
+    def wait(self):
+        while not self.__edge_detected:
+            time.sleep(1)
+        self.__edge_detected = False
 
-    # noinspection PyPep8Naming
-    def __write_to_lcd(self, first_line, second_line):
-        LCD = self.__LCD
-        LCD.lcd_string(first_line, LCD.LCD_LINE_1)
-        LCD.lcd_string(second_line, LCD.LCD_LINE_2)
-
-    # noinspection PyPep8Naming
-    def __write_to_pin(self, pin, state):
-        GPIO = self.__GPIO
-        state = GPIO.LOW if not state else GPIO.HIGH
-        GPIO.output(pin, state)
-
-    def read(self, channel, *args):
-        channel_name = Channel(channel)
-        self.__logger.debug('Attempting to read from \'%s\' with \'%s\'...', channel_name, args)
-
-        try:
-
-            if channel == Channel.SERIAL:
-                value = self.__read_from_serial()
-
-            elif channel == Channel.PIN:
-                pin = args[0] if len(args) >= 1 else None
-                expected_state = args[1] if len(args) >= 2 else True
-                value = self.__read_from_pin(pin, expected_state)
-
-            else:
-                raise NotImplemented
-
-        except Exception as e:
-            self.__logger.debug('Read from \'%s\' failed with args \'%s\'.', channel_name, args)
-            self.__logger.exception(e)
-            raise e
-
-        if value is not None and value is not False:
-            self.__logger.debug('Successfully read \'%s\' from \'%s\'.', value, channel_name)
-
-        return value
-
-    def __read_from_serial(self):
-        serial_connection = self.__serial_connection
-
-        if serial_connection.inWaiting() > 1:
-            value = serial_connection.readline().strip()[-12:]
-            serial_connection.flushInput()
-            serial_connection.flushOutput()
-            return value
-
-        return None
-
-    # noinspection PyPep8Naming
-    def __read_from_pin(self, pin, expected_state):
-        GPIO = self.__GPIO
-        expected_state = GPIO.LOW if not expected_state else GPIO.HIGH
-        return GPIO.input(pin) == expected_state
+    def fault(self):
+        self.__fault = True

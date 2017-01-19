@@ -1,13 +1,11 @@
-import sys
 import time
-
 import errno
 import socket
+import thread
+import threading
 from socket import error as socket_error
 
-# from threading import Thread
-import thread
-
+from pydash import debounce, delay, throttle
 from transitions import Machine
 # TODO: Enable LockedHierarchicalGraphMachine https://github.com/tyarkoni/transitions#-extensions
 # from transitions.extensions import LockedHierarchicalGraphMachine as Machine
@@ -16,122 +14,135 @@ from Command import Command
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from DeviceApi import DeviceApi, Channel
-from CommandHandler import CommandHandler
+from RemoteCommandHandler import RemoteCommandHandler
 from ClientOptionParser import ClientOptionParser, ClientOption
 
 
 class State(object):
-    INITIALIZED = 'INITIALIZED'
     IDLE = 'IDLE'
+    IN_USE = 'IN_USE'
+    INITIALIZED = 'INITIALIZED'
+    IN_FAULT = 'IN_FAULT'
+
+
+class Trigger(object):
+    LOGIN = 'login'
+    LOGOUT = 'logout'
 
 
 class Client(Machine):
     def __init__(self):
+        self.__device = None
+        self.__should_exit = False
         self.__logger = ClientLogger.setup()
         self.__opts = ClientOptionParser().parse_args()[0]
-        self.__should_exit = False
 
         states = []
         for key, _ in vars(State).items():
             if not key.startswith('__'):
                 states.append(key)
 
-        Machine.__init__(self, states=states, initial=State.INITIALIZED)
+        transitions = [
+            {
+                'trigger': Trigger.LOGIN,
+                'source': State.IDLE,
+                'dest': State.IN_USE
+            },
+            {
+                'trigger': Trigger.LOGOUT,
+                'source': [State.IN_USE, State.IDLE],
+                'dest': State.IDLE
+            }
+        ]
 
-    #This will be moved to some other class I am sure...
-    def run_listener(self):
-        self.__logger.debug('Attempting to establish %s listener...', PackageInfo.pip_package_name)
+        Machine.__init__(self, states=states, transitions=transitions, initial=State.INITIALIZED)
 
-        server = None
-
-        try:
-            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-            #TODO: this line causes some major proble, no exception is thrown
-            #listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-            server.bind(('', 8089))
-            server.settimeout(None)
-            server.listen(5)
-
-            now = time.time()
-            while not self.__should_exit:
-                self.__logger.debug('listener started...')
-                client = None
-
-                try:
-                    (client, addr) = server.accept()
-                    command = Command(client.recv(1024))
-                    if command:
-                        self.__logger.debug('%s listener received \'%s\' command',
-                                            PackageInfo.pip_package_name, command)
-
-                        #TODO: allow for graceful shutdown..
-                        if command is Command.STOP:
-                            self.__stop()
-                            break
-                        else:
-                            # send a standard response, possibly JSON...
-                            client.send('State: {0}'.format(self.state))
-
-                    client.shutdown(socket.SHUT_RDWR)
-
-                except socket_error as e:
-                    if e.errno != errno.ENOTCONN:
-                        self.__logger.exception(e)
-                        raise e
-
-                except Exception as e:
-                    self.__logger.exception(e)
-                    raise e
-
-                finally:
-                    if client:
-                        client.close()
-
-                if not self.__should_exit:
-                    self.__logger.debug('will stop listening...')
-
-        except Exception as e:
-            self.__logger.debug('Unable to establish the %s listener.', PackageInfo.pip_package_name)
-            self.__logger.exception(e)
-            thread.interrupt_main()
-
-        finally:
-            if server:
-                server.shutdown(socket.SHUT_RDWR)
-                server.close()
-
-    def __handle_status_command(self):
-        pass
-
-    def __handle_stop_command(self):
+    def __handle_stop_command(self, **kwargs):
         self.__stop()
 
     def __stop(self):
-        self.__should_exit = True
-        #TODO: wait for client status(self.state) to be done before we exit...
 
-    def __run(self):
-        with CommandHandler() as handler:
+        # TODO: wait for client status(self.state) to be done before we exit...
+
+        self.__should_exit = True
+
+    def __handle_status_command(self, **kwargs):
+        # TODO: work in progress... return self.state...
+        pass
+
+    def __enable_power(self):
+        self.__device.write(Channel.PIN, self.__opts.get(ClientOption.PIN_POWER_RELAY), True)
+
+    def __disable_power(self):
+        self.__device.write(Channel.PIN, self.__opts.get(ClientOption.PIN_POWER_RELAY), False)
+
+    def __do_logout(self):
+        #ServerApi.doLogout
+        pass
+
+    def __ensure_idle(self):
+        self.__do_logout()
+        self.__disable_power()
+        self.__device.write(Channel.LED, False, False, True)
+
+    def __ensure_in_use(self):
+        self.__enable_power()
+        self.__device.write(Channel.LED, False, True, False)
+
+    # noinspection PyPep8Naming
+    def on_enter_IN_USE(self, *args, **kwargs):
+        self.__ensure_in_use()
+        #TODO: lcdOutput message
+
+        self.__logger.debug('in_use')
+
+    # noinspection PyPep8Naming
+    def on_enter_IDLE(self, *args, **kwargs):
+        self.__ensure_idle()
+        #TODO: lcdOutput, scan badge message
+
+        self.__logger.debug('idle')
+
+    def __run(self, *args, **kwargs):
+        self.__logger.debug('on_enter_IDLE: args: %s, kwargs: %s', args, kwargs)
+        opts = self.__opts
+
+        with RemoteCommandHandler() as handler, DeviceApi(opts) as device:
+            self.__device = device
             handler.on(Command.STOP, self.__handle_stop_command)
             handler.on(Command.STATUS, self.__handle_status_command)
-            with DeviceApi(self.__opts) as device:
-                #device.on('channdle', 'handler')
-                #etc....
 
-                while not self.__should_exit:
+            device.on(
+                Channel.SERIAL,
+                direction=device.GPIO.IN,
+                call_back=self.login
+            )
 
-                    #TODO: remove this message when the complete implementation is final...
-                    self.__logger.debug('%s is running...', PackageInfo.pip_package_name)
+            device.on(
+                Channel.PIN,
+                pin=opts.get(ClientOption.PIN_LOGOUT),
+                direction=device.GPIO.RISING,
+                call_back=self.logout
+            )
 
-                    device.wait_for_edge()
+            self.set_state(State.IDLE)
+            while not self.__should_exit:
+                self.__logger.debug('%s is waiting...', PackageInfo.pip_package_name)
+                device.wait()
+
+    def on_enter_IN_FAULT(self, *args, **kwargs):
+        self.__device.fault()
 
     def run(self):
         while not self.__should_exit:
+            self.__logger.debug('Attempting to start the %s...', PackageInfo.pip_package_name)
             try:
                 self.__run()
             except Exception as e:
+                self.set_state(State.IN_FAULT)
+                #TODO: self.__device.remove_callbacks
+                self.__logger.debug('%s failed.', PackageInfo.pip_package_name)
                 self.__logger.exception(e)
-
-
+            self.__logger.debug('Retrying in 5 seconds...')
+            time.sleep(5)
+            self.set_state(State.INITIALIZED)
