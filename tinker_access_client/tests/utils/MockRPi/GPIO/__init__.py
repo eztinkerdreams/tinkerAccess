@@ -1,3 +1,4 @@
+import unittest
 from mock import Mock
 
 HIGH = 1
