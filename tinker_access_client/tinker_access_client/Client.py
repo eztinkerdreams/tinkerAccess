@@ -1,13 +1,11 @@
-import sys
 import time
-
 import errno
 import socket
+import thread
+import threading
 from socket import error as socket_error
 
-# from threading import Thread
-import thread
-
+from pydash import debounce, delay, throttle
 from transitions import Machine
 # TODO: Enable LockedHierarchicalGraphMachine https://github.com/tyarkoni/transitions#-extensions
 # from transitions.extensions import LockedHierarchicalGraphMachine as Machine
@@ -16,7 +14,7 @@ from Command import Command
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from DeviceApi import DeviceApi, Channel
-from CommandHandler import CommandHandler
+from RemoteCommandHandler import RemoteCommandHandler
 from ClientOptionParser import ClientOptionParser, ClientOption
 
 
@@ -26,10 +24,11 @@ class State(object):
 
 
 class Client(Machine):
+
     def __init__(self):
+        self.__should_exit = False
         self.__logger = ClientLogger.setup()
         self.__opts = ClientOptionParser().parse_args()[0]
-        self.__should_exit = False
 
         states = []
         for key, _ in vars(State).items():
@@ -38,100 +37,57 @@ class Client(Machine):
 
         Machine.__init__(self, states=states, initial=State.INITIALIZED)
 
-    #This will be moved to some other class I am sure...
-    def run_listener(self):
-        self.__logger.debug('Attempting to establish %s listener...', PackageInfo.pip_package_name)
-
-        server = None
-
-        try:
-            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-            #TODO: this line causes some major proble, no exception is thrown
-            #listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-            server.bind(('', 8089))
-            server.settimeout(None)
-            server.listen(5)
-
-            now = time.time()
-            while not self.__should_exit:
-                self.__logger.debug('listener started...')
-                client = None
-
-                try:
-                    (client, addr) = server.accept()
-                    command = Command(client.recv(1024))
-                    if command:
-                        self.__logger.debug('%s listener received \'%s\' command',
-                                            PackageInfo.pip_package_name, command)
-
-                        #TODO: allow for graceful shutdown..
-                        if command is Command.STOP:
-                            self.__stop()
-                            break
-                        else:
-                            # send a standard response, possibly JSON...
-                            client.send('State: {0}'.format(self.state))
-
-                    client.shutdown(socket.SHUT_RDWR)
-
-                except socket_error as e:
-                    if e.errno != errno.ENOTCONN:
-                        self.__logger.exception(e)
-                        raise e
-
-                except Exception as e:
-                    self.__logger.exception(e)
-                    raise e
-
-                finally:
-                    if client:
-                        client.close()
-
-                if not self.__should_exit:
-                    self.__logger.debug('will stop listening...')
-
-        except Exception as e:
-            self.__logger.debug('Unable to establish the %s listener.', PackageInfo.pip_package_name)
-            self.__logger.exception(e)
-            thread.interrupt_main()
-
-        finally:
-            if server:
-                server.shutdown(socket.SHUT_RDWR)
-                server.close()
-
-    def __handle_status_command(self):
-        pass
-
-    def __handle_stop_command(self):
+    def __handle_stop_command(self, **kwargs):
         self.__stop()
 
     def __stop(self):
-        self.__should_exit = True
+
         #TODO: wait for client status(self.state) to be done before we exit...
 
+        self.__should_exit = True
+
+    def __handle_status_command(self, **kwargs):
+        # TODO: work in progress... return self.state...
+        pass
+
     def __run(self):
-        with CommandHandler() as handler:
+        opts = self.__opts
+
+        with RemoteCommandHandler() as handler, DeviceApi(opts) as device:
             handler.on(Command.STOP, self.__handle_stop_command)
             handler.on(Command.STATUS, self.__handle_status_command)
-            with DeviceApi(self.__opts) as device:
-                #device.on('channdle', 'handler')
-                #etc....
 
-                while not self.__should_exit:
+            def trigger_login(*args, **kwargs):
+                self.__logger.debug('trigger login..')
 
-                    #TODO: remove this message when the complete implementation is final...
-                    self.__logger.debug('%s is running...', PackageInfo.pip_package_name)
+            def trigger_logout(*args, **kwargs):
+                self.__logger.debug('trigger logout..')
 
-                    device.wait_for_edge()
+            device.on(
+                Channel.SERIAL,
+                direction=device.GPIO.IN,
+                call_back=trigger_login
+            )
+
+            device.on(
+                Channel.PIN,
+                pin=opts.get(ClientOption.PIN_LOGOUT),
+                direction=device.GPIO.RISING,
+                call_back=trigger_logout
+            )
+
+            while not self.__should_exit:
+                device.wait()
 
     def run(self):
         while not self.__should_exit:
+            self.__logger.debug('Attempting to start the %s...', PackageInfo.pip_package_name)
             try:
                 self.__run()
             except Exception as e:
+                self.__logger.debug('%s failed.', PackageInfo.pip_package_name)
                 self.__logger.exception(e)
+            self.__logger.debug('Retrying in 5 seconds...')
+            time.sleep(5)
 
 

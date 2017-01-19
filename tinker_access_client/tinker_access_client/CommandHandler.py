@@ -10,11 +10,11 @@ from ClientOptionParser import ClientOptionParser
 
 # noinspection PyClassHasNoInit
 class CommandHandler(object):
-    def __init__(self):
+    def __init__(self, execute_initial_command=True):
         self.__logger = ClientLogger.setup()
         (opts, args) = ClientOptionParser().parse_args()
         cmd = Command(args[0].lower() if len(args) >= 1 and len(args[0].lower()) >= 1 else None)
-        self.__command = (cmd, opts, args) if cmd else None
+        self.__command = (cmd, opts, args) if cmd and execute_initial_command else None
         self.__handlers = []
 
     # TODO: add test and implement... __enter__, __exit__
@@ -77,7 +77,7 @@ class CommandHandler(object):
                 #     ClientDaemon.status()
                 #
                 # else:
-                #     raise NotImplemented()
+                #     raise NotImplementedError()
 
                 self.__handle_command(command)
 
@@ -93,7 +93,7 @@ class CommandHandler(object):
 
 
         else:
-            raise NotImplemented
+            raise NotImplementedError
 
             # except (KeyboardInterrupt, SystemExit):
             #     #  TODO: might not be needed here?

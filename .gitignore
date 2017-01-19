@@ -11,3 +11,4 @@ db.db
 **/*.egg-info/
 **/dist/
 **/build/
+.python-version
