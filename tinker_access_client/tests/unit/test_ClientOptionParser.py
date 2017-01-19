@@ -31,7 +31,7 @@ class ClientOptionParserTests(unittest.TestCase):
             '--device-id=' + command_line_device_id
         ]
 
-        (opts, args) = ClientOptionParser().parse_args(command_line_arguments)
+        opts = ClientOptionParser().parse_args(command_line_arguments)[0]
         expected_keys = vars(ClientOption).keys()
         expected_keys.remove('__module__')
         expected_keys.remove('__doc__')

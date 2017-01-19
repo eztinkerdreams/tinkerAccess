@@ -19,7 +19,7 @@ class LoggedRequestTest(unittest.TestCase):
 
         logger = mock_setup.return_value
         mock_get.assert_called_with(url, params, **kwargs)
-        self.assertEqual(logger.debug.call_count, 3)
+        self.assertEqual(logger.debug.call_count, 2)
 
     @patch.object(_request, 'get')
     @patch.object(ClientLogger, 'setup')
@@ -30,7 +30,7 @@ class LoggedRequestTest(unittest.TestCase):
 
         logger = mock_setup.return_value
         self.assertRaises(_request.RequestException, requests.get, 'foo')
-        self.assertEqual(logger.debug.call_count, 3)
+        self.assertEqual(logger.debug.call_count, 2)
         self.assertEqual(logger.exception.call_count, 1)
 
     @patch.object(_request, 'get')
@@ -40,5 +40,5 @@ class LoggedRequestTest(unittest.TestCase):
         self.assertRaises(RuntimeError, requests.get, 'foo')
 
         logger = mock_setup.return_value
-        self.assertEqual(logger.debug.call_count, 2)
+        self.assertEqual(logger.debug.call_count, 1)
         self.assertEqual(logger.exception.call_count, 1)
