@@ -8,7 +8,6 @@ class ServiceInstaller(object):
     @staticmethod
     def install(install_lib):
         logger = ClientLogger.setup(phase='install')
-        logger.debug('Attempting to install the %s service...', PackageInfo.pip_package_name)
         try:
             update_script = '{0}{1}/scripts/update.sh'.format(install_lib, PackageInfo.python_package_name)
             install_script = '{0}{1}/scripts/install.sh'.format(install_lib, PackageInfo.python_package_name)

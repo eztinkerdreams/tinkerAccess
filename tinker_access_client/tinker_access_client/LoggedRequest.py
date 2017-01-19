@@ -8,7 +8,6 @@ class LoggedRequest(object):
     @staticmethod
     def get(url, params=None, **kwargs):
         logger = ClientLogger.setup()
-        logger.debug('Attempting API request...')
 
         try:
             response = requests.get(url, params, **kwargs)
