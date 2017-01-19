@@ -31,10 +31,10 @@ config = {
         ]
     },
     'install_requires': [
+        'transitions==0.4.3',
         'daemonize==2.4.7',
-        'pyserial==3.2.1',
         'requests==2.12.4',
-        'transitions==0.4.3'
+        'pyserial==3.2.1'
     ],
     'packages': find_packages(exclude=('tests*',)),
     'test_suite': 'nose.collector',
