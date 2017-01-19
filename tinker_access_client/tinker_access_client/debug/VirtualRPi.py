@@ -36,6 +36,11 @@ class _VirtualGPIO(object):
     PUD_DOWN = 1
     PUD_UP = 2
 
+    #TODO: confirm these values
+    RISING = 1
+    FALLING = 2
+    BOTH = 3
+
     def __init__(self):
         self.__logger = ClientLogger.setup()
         self.__virtual_device_thread = Thread(target=VirtualDeviceServer.start)
@@ -55,6 +60,8 @@ class _VirtualGPIO(object):
     def setup(self, *args):
         pass
 
+    def add_event_detect(self, *args):
+        pass
 
 # noinspection PyClassHasNoInit
 class VirtualRPi:

@@ -10,6 +10,9 @@ class _VirtualSerial(object):
     def flushOutput(self, *args):
         pass
 
+    def inWaiting(self, *args):
+        pass
+
 
 # noinspection PyClassHasNoInit
 class VirtualSerial:
