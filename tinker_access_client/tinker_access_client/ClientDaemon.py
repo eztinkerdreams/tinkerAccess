@@ -1,10 +1,10 @@
 import os
 import sys
 import time
-
-
-# TODO: convert to use LoggedPopen utility...
-from subprocess import call, CalledProcessError, check_output
+from subprocess import \
+    call, \
+    check_output, \
+    CalledProcessError
 
 from Client import Client
 from Command import Command
@@ -13,21 +13,15 @@ from daemonize import Daemonize
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from ClientOption import ClientOption
-from ClientOptionParser import ClientOptionParser
 
 
 # noinspection PyClassHasNoInit
-
-
 class ClientDaemon:
 
     @staticmethod
-    def start(**kwargs):
-        opts = kwargs['opts'] if kwargs['opts'] else {}
-
+    def start(opts, args):
         logger = ClientLogger.setup()
-        if not ClientDaemon.__status():
-            logger.debug('Attempting to start %s...', PackageInfo.pip_package_name)
+        if not ClientDaemon.__status(opts, args):
             try:
                 client = Client()
                 pid_file = opts.get(ClientOption.PID_FILE)
@@ -52,21 +46,22 @@ class ClientDaemon:
             sys.exit(1)
 
     @staticmethod
-    def stop(**kwargs):
-        opts = kwargs['opts'] if kwargs['opts'] else {}
-
-        # Attempt to gracefully shutdown...
+    def stop(opts, args):
         logger = ClientLogger.setup()
-        logger.debug('Attempting to stop %s...', PackageInfo.pip_package_name)
-        if ClientDaemon.__status():
-            ClientDaemon.__stop()
-
-        # if any processes still exists at this point... we will become more persuasive...
+        pid_file = opts.get(ClientOption.PID_FILE)
+        logout_coast_time = opts.get(ClientOption.LOGOUT_COAST_TIME)
         try:
+            # Wait for what we assume will be a graceful exit
+            ClientDaemon.__stop(opts, args)
+            remaining_logout_coast_time = logout_coast_time
+            while remaining_logout_coast_time and os.path.isfile(pid_file):
+                remaining_logout_coast_time -= 1
+                time.sleep(1)
+
+            # if any processes still exists at this point... we will become more persuasive...
             for pid in check_output(['pgrep', '-f', '{0} start'.format(
                     PackageInfo.pip_package_name)]).splitlines():
                 try:
-                    logger.debug('Attempting to kill pid: %s', pid)
                     call(['kill', '-9', pid])
                 except Exception as e:
                     logger.exception(e)
@@ -74,36 +69,34 @@ class ClientDaemon:
             pass
 
         # if the pid file still exist at this point... nuke it from orbit!
-        pid_file = opts.get(ClientOption.PID_FILE)
         if os.path.isfile(pid_file):
             try:
-                logger.debug('Attempting to delete pid_file %s', pid_file)
                 os.remove(pid_file)
             except Exception as e:
                 logger.exception(e)
-                raise e
 
     @staticmethod
-    def restart():
-        # TODO: restart should wait until the client is idle.. not in use...
-
+    def restart(opts, args):
         logger = ClientLogger.setup()
-        logger.debug('Attempting to restart %s...', PackageInfo.pip_package_name)
         try:
-            ClientDaemon.stop()
-            ClientDaemon.start()
-
+            args[0] = Command.STOP.get('command')
+            ClientDaemon.stop(opts, args)
+            args[0] = Command.START.get('command')
+            ClientDaemon.start(opts, args)
         except Exception as e:
             logger.debug('%s restart failed.', PackageInfo.pip_package_name)
             logger.exception(e)
             raise e
 
+    # @staticmethod
+    # def update(opts, args):
+    #     pass
+
     # noinspection PyUnusedLocal
     @staticmethod
-    def status(**kwargs):
+    def status(opts, args):
         logger = ClientLogger.setup()
-        logger.debug('Attempting to check %s status...', PackageInfo.pip_package_name)
-        status = ClientDaemon.__status()
+        status = ClientDaemon.__status(opts, args)
         if status:
             sys.stdout.write('Status: {0}\n'.format(status))
             sys.stdout.flush()
@@ -116,32 +109,20 @@ class ClientDaemon:
         sys.exit(1)
 
     @staticmethod
-    def __status():
+    def __status(opts, args):
         # noinspection PyBroadException
         try:
             with ClientSocket() as socket:
-                return socket.send(Command.STATUS)
-
+                return socket.send(opts, args)
         except Exception:
             pass
-
-        return None
 
     @staticmethod
-    def __stop():
-        opts = ClientOptionParser().parse_args()[0]
-        logout_coast_time = opts.get(ClientOption.LOGOUT_COAST_TIME)
-
+    def __stop(opts, args):
         # noinspection PyBroadException
         try:
-            with ClientSocket(logout_coast_time + 5) as socket:
-                socket.send(Command.STOP)
-
-                # TODO: look for ways to exit early here...
-                #time.sleep(logout_coast_time)
-
+            with ClientSocket() as socket:
+                socket.send(opts, args)
         except Exception:
             pass
-
-        return None
 
