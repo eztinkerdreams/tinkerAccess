@@ -48,8 +48,6 @@ class TinkerAccessServerApi(object):
             self.__logger.debug('Logout attempt failed due to unexpected exception.')
             raise e
 
-        self.__logger.debug('Logout succeeded.')
-
     def register_user(self, trainer_id, trainer_badge_code, user_badge_code):
         try:
             url = "%s/admin/marioStar/%s/%s/%s/%s" % (
@@ -62,8 +60,7 @@ class TinkerAccessServerApi(object):
             raise e
 
         else:
-            if response.text() == 'true':
-                self.__logger.debug('User registration succeeded.')
+            if response.text == 'true':
                 return
 
         self.__logger.debug('User registration failed. The user is not authorized for this device.')

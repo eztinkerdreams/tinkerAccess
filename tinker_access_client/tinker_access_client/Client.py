@@ -2,8 +2,6 @@ import time
 import logging
 import threading
 from transitions import Machine
-# TODO: Enable LockedHierarchicalGraphMachine https://github.com/tyarkoni/transitions#-extensions
-# from transitions.extensions import LockedHierarchicalGraphMachine as Machine
 
 from Command import Command
 from TinkerAccessServerApi import TinkerAccessServerApi
@@ -11,6 +9,7 @@ from PackageInfo import PackageInfo
 from DeviceApi import DeviceApi, Channel
 from RemoteCommandHandler import RemoteCommandHandler
 from ClientOptionParser import ClientOptionParser, ClientOption
+from UserRegistrationException import UserRegistrationException
 from UnauthorizedAccessException import UnauthorizedAccessException
 
 maximum_lcd_characters = 16
@@ -84,6 +83,12 @@ class Client(Machine):
 
         Machine.__init__(self, queued=True, states=states, transitions=transitions, initial=State.INITIALIZED)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.__stop()
+
     #
     # IDLE -- The machine is idle and waiting for a badge to be scanned
     #
@@ -110,6 +115,8 @@ class Client(Machine):
         self.__update_user_context(None)
 
     def __disable_power(self):
+
+        # TODO: this should block until power sense returns false, with a max timeout using logout_coast_time
         self.__device.write(
             Channel.PIN, self.__opts.get(ClientOption.PIN_POWER_RELAY), False)
 
@@ -141,6 +148,7 @@ class Client(Machine):
 
         except UnauthorizedAccessException:
             self.__show_access_denied(2)
+            self.__ensure_idle()
 
         return self.__user_info is not None
 
@@ -253,7 +261,6 @@ class Client(Machine):
             'Take the class'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
-        self.__ensure_idle()
 
     def __show_red_led(self):
         self.__device.write(Channel.LED, True, False, False)
@@ -305,9 +312,11 @@ class Client(Machine):
             )
             self.__logger.info('Trainer activation succeeded for %s', badge_code)
             self.__show_trainer_accepted(1)
+            self.__show_scan_student_badge()
 
         except UnauthorizedAccessException:
             self.__show_access_denied(2)
+            self.__show_scan_trainer_badge()
 
         return self.__user_info is not None
 
@@ -323,12 +332,39 @@ class Client(Machine):
         self.__device.write(
             Channel.LCD,
             'Scan'.center(maximum_lcd_characters, ' '),
-            'Trainer Badge...'.center(maximum_lcd_characters, ' ')
+            'Student Badge...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
 
     def __register_student(self, badge_code):
-        self.__logger.debug('Register Student: %s', badge_code)
+        try:
+            self.__show_attempting_registration(1)
+            trainer_id = self.__user_info.get('user_id')
+            trainer_badge_code = self.__user_info.get('badge_code')
+            self.__tinkerAccessServerApi.register_user(trainer_id, trainer_badge_code, badge_code)
+            self.__logger.info('Student Registration succeeded for %s', badge_code)
+            self.__show_student_registered(1)
+
+        except UserRegistrationException:
+            self.__show_access_denied(2)
+
+        self.__show_scan_student_badge()
+
+    def __show_attempting_registration(self, delay=0):
+        self.__device.write(
+            Channel.LCD,
+            'Attempting'.center(maximum_lcd_characters, ' '),
+            'Registration...'.center(maximum_lcd_characters, ' ')
+        )
+        time.sleep(delay)
+
+    def __show_student_registered(self, delay=0):
+        self.__device.write(
+            Channel.LCD,
+            'Student'.center(maximum_lcd_characters, ' '),
+            'Registered...'.center(maximum_lcd_characters, ' ')
+        )
+        time.sleep(delay)
 
     #
     # Stop - The client has received a stop command
@@ -338,16 +374,10 @@ class Client(Machine):
         self.__stop()
 
     def __stop(self):
-        # what if device is in use, should stop return error, or forcefully do a stop?
-        # TODO: wait for client status(self.state) to be done before we exit...
-        # i.e. logout should be complete etc...
-
+        self.__should_exit = True
         self.__ensure_idle()
         self.__device.stop()
-        self.__exit()
-
-    def __exit(self):
-        self.__should_exit = True
+        self.__device = None
 
     #
     # Status - The client has received a status command
@@ -454,7 +484,8 @@ class Client(Machine):
                 self.__run()
 
             except (KeyboardInterrupt, SystemExit):
-                self.__exit()
+                self.__stop()
+                # pass
 
             except Exception as e:
                 self.set_state(State.IN_FAULT)
@@ -465,7 +496,6 @@ class Client(Machine):
                 self.__logger.debug('Retrying in 5 seconds...')
                 time.sleep(3)
                 self.set_state(State.INITIALIZED)
-
 
 #TODO
     # finally:
