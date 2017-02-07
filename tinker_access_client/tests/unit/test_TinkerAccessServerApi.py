@@ -78,10 +78,9 @@ class TinkerAccessServerApiTests(unittest.TestCase):
         self.assertEqual(self.__logger.debug.call_count, 1)
 
     @patch.object(LoggedRequest, 'get')
-    def test_logoutLogsRequest(self, mock_get):
+    def test_logout(self, mock_get):
         self.__api.logout(user_id)
         mock_get.assert_called_with('{0}/device/{1}/logout/{2}'.format(server_address, device_id, user_id))
-        self.assertEqual(self.__logger.debug.call_count, 1)
 
     @patch.object(LoggedRequest, 'get')
     def test_register_userRaisesUserRegistrationException(self, _):
@@ -97,12 +96,11 @@ class TinkerAccessServerApiTests(unittest.TestCase):
         self.assertEqual(self.__logger.debug.call_count, 1)
 
     @patch.object(LoggedRequest, 'get')
-    def test_register_userLogsRequest(self, mock_get):
+    def test_register_user(self, mock_get):
         mock_response = Mock()
-        mock_response.text.return_value = 'true'
+        mock_response.text = 'true'
         mock_get.return_value = mock_response
         self.__api.register_user(trainer_id, trainer_badge_code, user_badge_code)
         mock_get.assert_called_with('{0}/admin/marioStar/{1}/{2}/{3}/{4}'.format(
             server_address, trainer_id, trainer_badge_code, device_id, user_badge_code
         ))
-        self.assertEqual(self.__logger.debug.call_count, 1)
