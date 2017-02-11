@@ -31,8 +31,18 @@ class ServiceInstaller(object):
     def __ensure_execute_permission(self, path):
         os.chmod(path, 0755)
 
+    # TODO: this can be removed after the upgrade
     def __remove_legacy_client(self):
-        pass
+        self.__execute_commands([
+            'service tinkerclient stop\n',
+            'update-rc.d -f tinkerclient remove\n',
+            'rm -rf /etc/init.d/tinkerclient\n',
+            'rm -rf /opt/tinkeraccess/client.py\n',
+            'rm -rf /opt/tinkeraccess/client.pyc\n',
+            'rm -rf /opt/tinkeraccess/lcdModule.py\n',
+            'rm -rf /opt/tinkeraccess/lcdModule.pyc\n',
+            'rm -rf /opt/tinkeraccess/client.cfg\n'
+        ])
 
     def __create_service(self):
         self.__ensure_execute_permission(self.__service_script)

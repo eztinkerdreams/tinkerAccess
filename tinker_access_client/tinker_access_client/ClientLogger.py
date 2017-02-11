@@ -31,14 +31,6 @@ class ClientLogger(object):
             '%(user_id)s %(user_name)s %(badge_code)s %(message)s'
         sys_log_formatter = logging.Formatter(sys_log_format, datefmt='%FT%T')
 
-        # paperTrail
-        log_address_for_paper_trail = opts.get(ClientOption.LOG_ADDRESS_FOR_PAPER_TRAIL)
-        if log_address_for_paper_trail:
-            (paper_trail_host, paper_trail_port) = log_address_for_paper_trail.split(':', 2)
-            paper_trail_handler = handlers.SysLogHandler((paper_trail_host, int(paper_trail_port)))
-            paper_trail_handler.setFormatter(sys_log_formatter)
-            logger.addHandler(paper_trail_handler)
-
         # dev/log
         sys_log_file = '/var/log/syslog'
         if os.path.exists(sys_log_file):

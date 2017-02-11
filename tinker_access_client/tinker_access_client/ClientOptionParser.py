@@ -1,5 +1,6 @@
 import sys
 import os
+import socket
 import ConfigParser
 from optparse import OptionParser, OptionGroup
 
@@ -9,18 +10,16 @@ from ClientOption import ClientOption
 
 ClientOptionDefaults = {
     ClientOption.DEBUG: False,
-    ClientOption.DEBUG_PORT: 2020,
     ClientOption.CONFIG_FILE: '/etc/{0}.conf'.format(PackageInfo.pip_package_name),
     ClientOption.PID_FILE: '/var/run/{0}.pid'.format(PackageInfo.pip_package_name),
     ClientOption.LOG_FILE: '/var/log/{0}.log'.format(PackageInfo.pip_package_name),
     ClientOption.STATUS_FILE: '/var/log/{0}.status'.format(PackageInfo.pip_package_name),
     ClientOption.LOG_LEVEL: 10,
     ClientOption.SERVER_ADDRESS: 'http://10.2.1.2:5000',
-    ClientOption.DEVICE_ID: 0,
+    ClientOption.DEVICE_ID: socket.gethostname(),
     ClientOption.SERIAL_PORT_NAME: '/dev/ttyUSB0',
     ClientOption.SERIAL_PORT_SPEED: 9600,
     ClientOption.PIN_LOGOUT: 16,
-    ClientOption.CLIENT_PORT: 8089,
     ClientOption.PIN_POWER_RELAY: 17,
     ClientOption.PIN_LED_RED: 21,
     ClientOption.PIN_LED_GREEN: 19,
@@ -28,8 +27,7 @@ ClientOptionDefaults = {
     ClientOption.PIN_CURRENT_SENSE: 12,
     ClientOption.LOGOUT_COAST_TIME: 0,
     ClientOption.RESTART_DELAY: 5,
-    ClientOption.MAX_POWER_DOWN_TIMEOUT: 5,
-    ClientOption.LOG_ADDRESS_FOR_PAPER_TRAIL: None
+    ClientOption.MAX_POWER_DOWN_TIMEOUT: 5
 }
 
 
@@ -55,12 +53,9 @@ class ClientOptionParser(object):
         usage += commands
         usage += '\n\nTinkerMill Raspberry Pi access control system.' \
                  '\n\nExamples:\n\n' \
-                 '  Start the client with the device id set to \'plasma-cutter\'.' \
-                 '\n  If the client were to stop unexpectedly, a restart would be attempted every 5 seconds.' \
-                 '\n\n  \'{0} --device-id=plasma-cutter --restart-delay=5 ' \
-                 '\n\n  Start the client configured to use a different tinker-access-server ' \
+                 '  Start the client configured to use a different tinker-access-server ' \
                  '(i.e. a development server) and an alternative serial port' \
-                 '\n\n  \'{0} --server-address=http://<server-address> ' \
+                 '\n\n  \'sudo {0} --server-address=http://<server-address> ' \
                  '--serial-port-name=/dev/ttyUSB1\' '.format(PackageInfo.python_package_name)
 
         self.__parser.set_usage(usage)
@@ -76,28 +71,10 @@ class ClientOptionParser(object):
 
         self.__parser.add_option(
             '--debug',
-            help='run in foreground(a.k.a debug mode) [default:\'%default\']',
+            help='run in the foreground (a.k.a debug mode) [default:\'%default\']',
             default=ClientOptionDefaults[ClientOption.DEBUG],
             dest=ClientOption.DEBUG,
             action='store_true')
-
-        self.__parser.add_option(
-            '--debug-port',
-            help='The port to host the virtual device UI in debug mode [default:\'%default\']',
-            default=ClientOptionDefaults[ClientOption.DEBUG_PORT],
-            dest=ClientOption.DEBUG_PORT,
-            type='int',
-            action='store')
-
-        # TODO: remove if no longer needed
-        self.__parser.add_option(
-            '--client-port',
-            help='The port to listen for external commands, i.e. (status, config, reload etc...) '
-                 '[default:\'%default\']',
-            default=ClientOptionDefaults[ClientOption.CLIENT_PORT],
-            dest=ClientOption.CLIENT_PORT,
-            type='int',
-            action='store')
 
         self.__parser.add_option(
             '--log-file',
@@ -109,8 +86,8 @@ class ClientOptionParser(object):
         self.__parser.add_option(
             '--status-file',
             help='the path and name of the status file, the contents of this file will always '
-                 'reflect the current state of the client. A missing file indicates the client is not running '
-                 '(i.e. initialized, idle, in_use, in_training, terminated) [default:\'%default\']',
+                 'reflect the current state of the client. (i.e. initialized, idle, in_use, in_training, terminated) '
+                 'A missing file indicates the client is not running [default:\'%default\']',
             default=ClientOptionDefaults[ClientOption.STATUS_FILE],
             dest=ClientOption.STATUS_FILE,
             action='store')
@@ -139,16 +116,9 @@ class ClientOptionParser(object):
 
         self.__parser.add_option(
             '--device-id',
-            help='the device id for this client [default:%default]',
+            help='A unique identity for this client [default:\'%default\']',
             default=ClientOptionDefaults[ClientOption.DEVICE_ID],
             dest=ClientOption.DEVICE_ID,
-            action='store')
-
-        self.__parser.add_option(
-            '--log-address-for-paper-trail',
-            help='the log address for paper trail [default:%default]',
-            default=ClientOptionDefaults[ClientOption.LOG_ADDRESS_FOR_PAPER_TRAIL],
-            dest=ClientOption.LOG_ADDRESS_FOR_PAPER_TRAIL,
             action='store')
 
         self.__parser.add_option(

@@ -8,8 +8,7 @@ install:
   - echo -e __version__="\"${VERSION}\"\n" > "${VERSION_DEST}"
 
 script:
-  - cd "${PYTHON_PACKAGE_SRC}" && sudo pip install --upgrade --no-compile --force-reinstall --quiet . && sudo python setup.py test
-
+  - cd "${PYTHON_PACKAGE_SRC}" && sudo pip install --upgrade --no-compile --force-reinstall . && sudo python setup.py test
 before_deploy:
 
   #TODO: generating a change log for the release message would be nice....

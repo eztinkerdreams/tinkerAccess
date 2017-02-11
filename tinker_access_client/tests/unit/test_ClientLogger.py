@@ -50,25 +50,6 @@ class TestClientLogger(unittest.TestCase):
     @patch.object(ClientOptionParser, '__new__')
     @patch.object(logging.handlers, 'SysLogHandler')
     @patch.object(logging.handlers, 'TimedRotatingFileHandler')
-    def test_setupAddsPaperTrailHandler(self, _0, mock_sys_log_handler, mock_parser, _1, _2, _3, mock_path):
-        mock_path.exists.return_value = False
-        paper_trail_host = 'foo'
-        paper_trail_port = 1001
-        log_address_for_paper_trail = '{0}:{1}'.format(paper_trail_host, paper_trail_port)
-        mock_parser.return_value.parse_args.return_value = ({
-            ClientOption.LOG_ADDRESS_FOR_PAPER_TRAIL: log_address_for_paper_trail
-        }, [])
-        logger = ClientLogger.setup()
-        mock_sys_log_handler.assert_any_call((paper_trail_host, paper_trail_port))
-        logger.addHandler.assert_any_call(mock_sys_log_handler.return_value)
-
-    @patch.object(os, 'path')
-    @patch.object(os, 'makedirs')
-    @patch.object(logging, 'getLogger')
-    @patch.object(logging, 'StreamHandler')
-    @patch.object(ClientOptionParser, '__new__')
-    @patch.object(logging.handlers, 'SysLogHandler')
-    @patch.object(logging.handlers, 'TimedRotatingFileHandler')
     def test_setupAddsSysLogHandler(self, _0, mock_sys_log_handler, mock_parser, _1, _2, mock_makedirs, mock_path):
         mock_parser.return_value.parse_args.return_value = ({}, [])
         mock_path.exists.return_value = True
