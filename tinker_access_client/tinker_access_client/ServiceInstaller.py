@@ -1,5 +1,7 @@
 import os
+import tempfile
 import subprocess
+
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 
@@ -16,9 +18,9 @@ class ServiceInstaller(object):
         try:
             # TODO: legacy migration/removal
 
-            self.__grant_execute_permission()
+            self.__ensure_execute_permission(self.__service_script)
             self.__create_symbolic_link()
-            self.__configure_service_to_start_on_boot()
+            self.__configure_service()
 
             # TODO: configure/enable auto-updates?
 
@@ -27,8 +29,9 @@ class ServiceInstaller(object):
             self.__logger.exception(e)
             raise e
 
-    def __grant_execute_permission(self):
-        os.chmod(self.__service_script, 0755)
+    # noinspection PyMethodMayBeStatic
+    def __ensure_execute_permission(self, path):
+        os.chmod(path, 0755)
 
     def __create_symbolic_link(self):
 
@@ -40,14 +43,30 @@ class ServiceInstaller(object):
         if os.path.lexists(self.__service_link) and os.readlink(self.__service_link) != self.__service_script:
             os.remove(self.__service_link)
 
+        # create the symlink if it doesn't already exists
         if not os.path.lexists(self.__service_link):
             os.symlink(self.__service_script, self.__service_link)
 
-    def __configure_service_to_start_on_boot(self):
-        self.__execute(['update-rc.d', PackageInfo.pip_package_name,  'defaults', '91'])
+    def __configure_service(self):
 
-    def __restart_service(self):
-        self.__execute(['service', PackageInfo.pip_package_name, 'restart'])
+        # I suppose an explanation is warranted here...
+        # Unfortunately we cannot execute these commands directly from python due to the fact that the
+        # start priority 91 must be passed to the update-rc command as an integer and python converts all arguments to
+        # strings which causes and exception when the update command is invoked.
+        # We work around the problem by creating a temporary script file and executing that
+        fd, path = tempfile.mkstemp(suffix='.sh')
+        try:
+            with os.fdopen(fd, 'w') as tmp:
+                tmp.writelines([
+                    '#!/usr/bin/env bash\n',
+                    'update-rc.d {0} defaults 91\n'.format(PackageInfo.pip_package_name),
+                    'service {0} restart\n'.format(PackageInfo.pip_package_name)
+                ])
+
+            self.__ensure_execute_permission(path)
+            self.__execute([path])
+        finally:
+            os.remove(path)
 
     def __execute(self, command):
         cmd = command + ['-evx']
