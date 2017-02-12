@@ -39,7 +39,8 @@ def run():
 
         logging.basicConfig(level=logging.DEBUG,
                             format='%(asctime)s %(levelname)s %(message)s',
-                            filename=opts.get(ClientOption.LOG_FILE))
+                            filename=opts.get(ClientOption.LOG_FILE),
+                            filemode='a')
 
         logger = logging.getLogger()
 
