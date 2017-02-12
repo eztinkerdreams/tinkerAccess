@@ -7,7 +7,7 @@ class ContextFilter(logging.Filter):
     def __init__(self, opts):
         self.__device_id = opts.get(ClientOption.DEVICE_ID)
         self.__app_id = PackageInfo.pip_package_name
-        self.__version = PackageInfo.version
+        self.__version = PackageInfo.version or '0.0.0'
         self.__user_info = None
 
     def update_user_context(self, user_info):
@@ -28,6 +28,6 @@ class ContextFilter(logging.Filter):
                 record.user_name = \
                 record.badge_id = \
                 record.badge_code = \
-                record.device_name = None
+                record.device_name = ''
 
         return True
