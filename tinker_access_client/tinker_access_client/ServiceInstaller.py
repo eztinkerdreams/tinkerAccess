@@ -1,4 +1,5 @@
 import os
+import time
 import tempfile
 import subprocess
 
@@ -61,10 +62,19 @@ class ServiceInstaller(object):
 
     def __configure_service(self):
         self.__execute_commands([
-            'update-rc.d {0} defaults 91\n'.format(PackageInfo.pip_package_name),
-            'sleep 1\n'.format(PackageInfo.pip_package_name),
-            'service {0} restart\n'.format(PackageInfo.pip_package_name)
+            'update-rc.d {0} defaults 91\n'.format(PackageInfo.pip_package_name)
         ])
+
+        try:
+            time.sleep(5)
+            self.__execute_command('service {0} stop'.format(PackageInfo.pip_package_name))
+            time.sleep(5)
+            self.__execute_command('service {0} start'.format(PackageInfo.pip_package_name))
+            # cmd = 'service {0} restart\n'.format(PackageInfo.pip_package_name)
+            # self.__execute_commands([cmd])
+        except Exception as e:
+            self.__logger.debug('command failed')
+            self.__logger.exception(e)
 
     def __execute_commands(self, commands):
         # I suppose an explanation is warranted here...
@@ -75,15 +85,14 @@ class ServiceInstaller(object):
         fd, path = tempfile.mkstemp(suffix='.sh')
         try:
             with os.fdopen(fd, 'w') as tmp:
-                tmp.writelines(['#!/usr/bin/env bash\n\n'] + commands)
-            self.__execute_script(path)
+                tmp.writelines(['#!/usr/bin/env bash \n\n'] + commands)
+            self.__ensure_execute_permission(path)
+            self.__execute_command(path)
         finally:
             os.remove(path)
 
-    def __execute_script(self, path):
-        self.__ensure_execute_permission(path)
-
-        cmd = [path] + ['-evx']  # Options: http://www.tldp.org/LDP/abs/html/options.html
+    def __execute_command(self, command):
+        cmd = [command] + ['-evx']  # Options: http://www.tldp.org/LDP/abs/html/options.html
         cmd_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout_data, stderr_data = cmd_process.communicate()
         if cmd_process.returncode != 0:
