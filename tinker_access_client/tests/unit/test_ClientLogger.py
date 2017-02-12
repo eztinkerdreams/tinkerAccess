@@ -13,21 +13,21 @@ from tinker_access_client.tinker_access_client.ClientOptionParser import ClientO
 
 class TestClientLogger(unittest.TestCase):
 
-    @patch.object(os, 'path')
-    @patch.object(os, 'makedirs')
-    @patch.object(logging, 'getLogger')
-    @patch.object(logging, 'StreamHandler')
-    @patch.object(ClientOptionParser, '__new__')
-    @patch.object(logging.handlers, 'SysLogHandler')
-    @patch.object(logging.handlers, 'TimedRotatingFileHandler')
-    def test_setupSetsLogLevel(self, _0, _1, mock_parser, _3, _4, _5, mock_path):
-        mock_path.exists.return_value = False
-        log_level = 9
-        mock_parser.return_value.parse_args.return_value = ({
-            ClientOption.LOG_LEVEL: log_level
-        }, [])
-        logger = ClientLogger.setup()
-        logger.setLevel.assert_called_with(9)
+    # @patch.object(os, 'path')
+    # @patch.object(os, 'makedirs')
+    # @patch.object(logging, 'getLogger')
+    # @patch.object(logging, 'StreamHandler')
+    # @patch.object(ClientOptionParser, '__new__')
+    # @patch.object(logging.handlers, 'SysLogHandler')
+    # @patch.object(logging.handlers, 'TimedRotatingFileHandler')
+    # def test_setupSetsLogLevel(self, _0, _1, mock_parser, _3, _4, _5, mock_path):
+    #     mock_path.exists.return_value = False
+    #     log_level = 9
+    #     mock_parser.return_value.parse_args.return_value = ({
+    #         ClientOption.LOG_LEVEL: log_level
+    #     }, [])
+    #     logger = ClientLogger.setup()
+    #     logger.setLevel.assert_called_with(9)
 
     @patch.object(os, 'path')
     @patch.object(os, 'makedirs')
