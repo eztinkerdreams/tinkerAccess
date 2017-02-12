@@ -12,7 +12,7 @@ Training mode can be entered by scanning the trainers RFID badge and then holdin
 Ensure you have the latest version of PIP installed:
 
 ```commandline
-sudo pip install --upgrade pip
+sudo easy_install --upgrade pip
 ```
 
 Install the latest version of the client:

@@ -17,7 +17,6 @@ class ServiceInstaller(object):
 
     def install(self):
         try:
-            #self.__remove_legacy_client()  # TODO: remove after upgrade
             self.__create_service()
             self.__configure_service()
             self.__restart_service()
@@ -27,25 +26,13 @@ class ServiceInstaller(object):
         except Exception as e:
             self.__logger.debug('%s service installation failed.', PackageInfo.pip_package_name)
             self.__logger.exception(e)
-            raise e
+
+            self.__logger.debug('INSTALLER WOULD HAVE FAILED')
+            #raise e
 
     # noinspection PyMethodMayBeStatic
     def __ensure_execute_permission(self, path):
         os.chmod(path, 0755)
-
-    # # TODO: this can be removed after the upgrade
-    # def __remove_legacy_client(self):
-    #     if os.path.exists('/etc/init.d/tinkerclient'):
-    #         self.__execute_commands([
-    #             'service tinkerclient stop\n',
-    #             'update-rc.d -f tinkerclient remove\n',
-    #             'rm -rf /etc/init.d/tinkerclient\n',
-    #             'rm -rf /opt/tinkeraccess/client.py\n',
-    #             'rm -rf /opt/tinkeraccess/client.pyc\n',
-    #             'rm -rf /opt/tinkeraccess/lcdModule.py\n',
-    #             'rm -rf /opt/tinkeraccess/lcdModule.pyc\n',
-    #             'rm -rf /opt/tinkeraccess/client.cfg\n'
-    #         ])
 
     def __create_service(self):
         self.__ensure_execute_permission(self.__service_script)
@@ -63,14 +50,10 @@ class ServiceInstaller(object):
             os.symlink(self.__service_script, self.__service_link)
 
     def __configure_service(self):
+        time.sleep(5)
         self.__execute_commands([
-            'update-rc.d -f {0} defaults 91\n'.format(PackageInfo.pip_package_name)
+            'update-rc.d {0} defaults 91\n'.format(PackageInfo.pip_package_name)
         ])
-
-        # time.sleep(5)
-        # self.__execute_commands([
-        #     'service {0} restart\n'.format(PackageInfo.pip_package_name)
-        # ])
 
     def __restart_service(self):
         time.sleep(5)
@@ -87,23 +70,29 @@ class ServiceInstaller(object):
         fd, path = tempfile.mkstemp()
         try:
             with os.fdopen(fd, 'w') as tmp:
-                tmp.writelines(['#!/usr/bin/env bash \n'] + commands)
+                tmp.writelines(['#!/usr/bin/env bash\n'] + commands)
             self.__ensure_execute_permission(path)
             self.__execute_command(path)
         finally:
             os.remove(path)
 
     def __execute_command(self, command):
-        cmd = [command] + ['-evx']  # Options: http://www.tldp.org/LDP/abs/html/options.html
-        cmd_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout_data, stderr_data = cmd_process.communicate()
-        if cmd_process.returncode != 0:
-            for ln in stderr_data.splitlines(True):
-                self.__logger.error(ln)
-            raise RuntimeError('{0} command failed.'.format(cmd))
-        else:
-            for ln in stdout_data.splitlines(True):
-                self.__logger.debug(ln)
+        try:
+            cmd = [command] + ['-evx']  # Options: http://www.tldp.org/LDP/abs/html/options.html
+            cmd_process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout_data, stderr_data = cmd_process.communicate()
+            if cmd_process.returncode != 0:
+                for ln in stderr_data.splitlines(True):
+                    self.__logger.error(ln)
+                raise RuntimeError('{0} command failed.'.format(cmd))
+            else:
+                for ln in stdout_data.splitlines(True):
+                    self.__logger.debug(ln)
+        except RuntimeError as e:
+            raise e
+        except Exception as e:
+            self.__logger.exception(e)
+            raise e
 
 
 
