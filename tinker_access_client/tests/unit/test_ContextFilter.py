@@ -24,14 +24,13 @@ class TestContextFilter(unittest.TestCase):
             'badge_code': badge_code,
             'device_name': device_name
         })
-
         context_filter.filter(record=self)
 
     def test_filter(self):
-        self.assertTrue(self.user_id == user_id)
-        self.assertTrue(self.user_name == user_name)
-        self.assertTrue(self.device_id == device_id)
-        self.assertTrue(self.badge_code == badge_code)
-        self.assertTrue(self.device_name == device_name)
-        self.assertTrue(self.version == PackageInfo.version)
-        self.assertTrue(self.app_id == PackageInfo.pip_package_name)
+        self.assertEqual(self.user_id, user_id)
+        self.assertEqual(self.user_name, user_name)
+        self.assertEqual(self.device_id, device_id)
+        self.assertEqual(self.badge_code, badge_code)
+        self.assertEqual(self.device_name, device_name)
+        self.assertEqual(self.version, PackageInfo.version or '0.0.0')
+        self.assertEqual(self.app_id, PackageInfo.pip_package_name)
