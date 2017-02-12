@@ -20,13 +20,18 @@ class ClientDaemon:
     @staticmethod
     def start(opts, args):
         logger = logging.getLogger(__name__)
+        logger.debug('FOO')
+
         if not ClientDaemon.__status(opts, args):
             try:
                 pid_file = opts.get(ClientOption.PID_FILE)
                 foreground = opts.get(ClientOption.DEBUG)
 
                 def start():
-                    Client.run(opts, args)
+                    while True:
+                        logger.debug('foo')
+                        time.sleep(5)
+                    #Client.run(opts, args)
 
                 daemon = Daemonize(
                     app=PackageInfo.pip_package_name,

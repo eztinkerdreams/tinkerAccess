@@ -75,7 +75,7 @@ class ServiceInstaller(object):
         fd, path = tempfile.mkstemp(suffix='.sh')
         try:
             with os.fdopen(fd, 'w') as tmp:
-                tmp.writelines(['#!/usr/bin/env bash\n\n'] + commands)
+                tmp.writelines(['#!/usr/bin/env bash \n\n'] + commands)
             self.__execute_script(path)
         finally:
             os.remove(path)
