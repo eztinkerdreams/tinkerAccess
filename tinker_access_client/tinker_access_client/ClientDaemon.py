@@ -2,7 +2,6 @@ import os
 import sys
 import signal
 import time
-import logging
 from subprocess import \
     check_output, \
     CalledProcessError
@@ -12,6 +11,7 @@ from Command import Command
 from daemonize import Daemonize
 from PackageInfo import PackageInfo
 from ClientOption import ClientOption
+from ClientLogger import ClientLogger
 
 
 # noinspection PyClassHasNoInit
@@ -19,7 +19,7 @@ class ClientDaemon:
 
     @staticmethod
     def start(opts, args):
-        logger = logging.getLogger(__name__)
+        logger = ClientLogger.setup()
         if not ClientDaemon.__status(opts, args):
             try:
                 pid_file = opts.get(ClientOption.PID_FILE)
@@ -49,7 +49,7 @@ class ClientDaemon:
 
     @staticmethod
     def stop(opts, args):
-        logger = logging.getLogger(__name__)
+        logger = ClientLogger.setup()
         pid_file = opts.get(ClientOption.PID_FILE)
         logout_coast_time = opts.get(ClientOption.LOGOUT_COAST_TIME)
         max_power_down_timeout = opts.get(ClientOption.MAX_POWER_DOWN_TIMEOUT)
@@ -80,7 +80,7 @@ class ClientDaemon:
 
     @staticmethod
     def restart(opts, args):
-        logger = logging.getLogger(__name__)
+        logger = ClientLogger.setup()
         restart_delay = opts.get(ClientOption.RESTART_DELAY)
         try:
             args[0] = Command.STOP.get('command')

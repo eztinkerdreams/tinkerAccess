@@ -26,7 +26,8 @@ class ClientLogger(object):
         log_level = opts.get(ClientOption.LOG_LEVEL)
         if phase == 'install' or opts.get(ClientOption.DEBUG):
             log_level = logging.DEBUG
-        logger.setLevel(log_level)
+
+        logger.setLevel(logging.DEBUG)
 
         # dev/log
         sys_log_file = '/var/log/syslog'
