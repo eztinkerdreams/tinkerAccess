@@ -1,15 +1,12 @@
-import os
 import time
 import logging
 import threading
 from transitions import Machine
 
-from Command import Command
-from TinkerAccessServerApi import TinkerAccessServerApi
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from DeviceApi import DeviceApi, Channel
-from RemoteCommandHandler import RemoteCommandHandler
+from TinkerAccessServerApi import TinkerAccessServerApi
 from ClientOptionParser import ClientOptionParser, ClientOption
 from UserRegistrationException import UserRegistrationException
 from UnauthorizedAccessException import UnauthorizedAccessException
@@ -40,7 +37,7 @@ class Client(Machine):
         self.__device = device
         self.__user_info = None
         self.__logout_timer = None
-        self.__logger = logging.getLogger(__name__)
+        self.__logger = ClientLogger.setup()
         self.__opts = ClientOptionParser().parse_args()[0]
         self.__tinkerAccessServerApi = TinkerAccessServerApi(self.__opts)
 
@@ -495,19 +492,13 @@ class Client(Machine):
     @staticmethod
     def run(opts, args):
         should_exit = False
-        logger = logging.getLogger(__name__)
+        logger = ClientLogger.setup()
         restart_delay = opts.get(ClientOption.RESTART_DELAY)
 
         while not should_exit:
             try:
                 with DeviceApi(opts) as device, \
                         Client(device) as client:
-
-                # TODO: implement correctly...
-                # RemoteCommandHandler() as handler:
-                #     handler.on(Command.STOP, client.terminate)
-                #     handler.on(Command.STATUS, client.status)
-                #     handler.listen()
 
                     device.on(
                         Channel.SERIAL,
