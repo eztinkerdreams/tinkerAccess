@@ -1,4 +1,5 @@
 import os
+import time
 import tempfile
 import subprocess
 
@@ -61,8 +62,11 @@ class ServiceInstaller(object):
 
     def __configure_service(self):
         self.__execute_commands([
-            'update-rc.d {0} defaults 91\n'.format(PackageInfo.pip_package_name),
-            'sleep 1\n'.format(PackageInfo.pip_package_name),
+            'update-rc.d {0} defaults 91\n'.format(PackageInfo.pip_package_name)
+        ])
+
+        time.sleep(5)
+        self.__execute_commands([
             'service {0} restart\n'.format(PackageInfo.pip_package_name)
         ])
 
@@ -75,7 +79,7 @@ class ServiceInstaller(object):
         fd, path = tempfile.mkstemp(suffix='.sh')
         try:
             with os.fdopen(fd, 'w') as tmp:
-                tmp.writelines(['#!/usr/bin/env bash\n\n'] + commands)
+                tmp.writelines(['#!/usr/bin/env bash \n\n'] + commands)
             self.__execute_script(path)
         finally:
             os.remove(path)
