@@ -15,34 +15,17 @@
 
 import sys
 import logging
-
-#from ClientLogger import ClientLogger
-from ClientOption import ClientOption
+from ClientLogger import ClientLogger
 from ClientDaemon import ClientDaemon
 from CommandHandler import CommandHandler
 from ClientOptionParser import ClientOptionParser, Command
 
 
 def run():
-
-    #logger = ClientLogger.setup()
-    # (opts, args) = ClientOptionParser().parse_args()
-    #
-    # logging.basicConfig(level=logging.DEBUG,
-    #                     format='%(asctime)s %(levelname)s %(message)s',
-    #                     filename=opts.get(ClientOption.LOG_FILE))
-    #
-    # logger = logging.getLogger()
+    logger = ClientLogger.setup()
+    (opts, args) = ClientOptionParser().parse_args()
 
     try:
-        (opts, args) = ClientOptionParser().parse_args()
-
-        logging.basicConfig(level=logging.DEBUG,
-                            format='%(asctime)s %(levelname)s %(message)s',
-                            filename=opts.get(ClientOption.LOG_FILE))
-
-        logger = logging.getLogger()
-
         with CommandHandler(opts, args) as handler:
             handler.on(Command.STOP, ClientDaemon.stop)
             handler.on(Command.START, ClientDaemon.start)
@@ -51,8 +34,7 @@ def run():
             return handler.handle_command()
 
     except Exception as e:
-        # logger.debug('Exception during command execution...: opts: %s, args: %s', opts, args)
-        # logger.exception(e)
+        logger.exception(e)
         sys.stdout.write(str(e))
         sys.stdout.flush()
         sys.exit(1)
