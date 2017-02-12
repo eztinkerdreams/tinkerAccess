@@ -22,7 +22,11 @@ class ClientLogger(object):
         logger = logging.getLogger()
         logger.filters = []
         logger.handlers = []
-        logger.setLevel(opts.get(ClientOption.LOG_LEVEL) if not opts.get(ClientOption.DEBUG) else logging.DEBUG)
+
+        log_level = opts.get(ClientOption.LOG_LEVEL)
+        if phase == 'install' or opts.get(ClientOption.DEBUG):
+            log_level = logging.DEBUG
+        logger.setLevel(log_level)
 
         # dev/log
         sys_log_file = '/var/log/syslog'
