@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-# import sys
-# sys.path.append('/usr/local/lib/python2.7/dist-packages/tinker_access_client')
+#!/usr/bin/python
 
 # Reference: https://wiki.debian.org/LSBInitScripts
 
@@ -17,7 +15,8 @@
 
 import sys
 import logging
-# from ClientLogger import ClientLogger
+
+#from ClientLogger import ClientLogger
 from ClientOption import ClientOption
 from ClientDaemon import ClientDaemon
 from CommandHandler import CommandHandler
@@ -25,7 +24,8 @@ from ClientOptionParser import ClientOptionParser, Command
 
 
 def run():
-    # logger = ClientLogger.setup()
+
+    #logger = ClientLogger.setup()
     (opts, args) = ClientOptionParser().parse_args()
 
     logging.basicConfig(level=logging.DEBUG,
@@ -44,6 +44,7 @@ def run():
             return handler.handle_command()
 
     except Exception as e:
+        logger.debug('Exception during command execution...: opts: %s, args: %s', opts, args)
         logger.exception(e)
         sys.stdout.write(str(e))
         sys.stdout.flush()
