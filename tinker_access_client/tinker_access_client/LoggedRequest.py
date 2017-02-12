@@ -17,7 +17,7 @@ class LoggedRequest(object):
                 fkwargs=kwargs,
                 tries=4,
                 delay=1,
-                backoff=2,
+                backoff=3,
                 logger=logger
             )
 
