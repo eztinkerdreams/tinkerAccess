@@ -1,20 +1,17 @@
-import os
 import time
 import logging
 import threading
 from transitions import Machine
 
-from Command import Command
-from TinkerAccessServerApi import TinkerAccessServerApi
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from DeviceApi import DeviceApi, Channel
-from RemoteCommandHandler import RemoteCommandHandler
+from TinkerAccessServerApi import TinkerAccessServerApi
 from ClientOptionParser import ClientOptionParser, ClientOption
 from UserRegistrationException import UserRegistrationException
 from UnauthorizedAccessException import UnauthorizedAccessException
 
-maximum_lcd_characters = 15
+maximum_lcd_characters = 16
 training_mode_delay_seconds = 2
 logout_timer_interval_seconds = 1
 
@@ -40,7 +37,7 @@ class Client(Machine):
         self.__device = device
         self.__user_info = None
         self.__logout_timer = None
-        self.__logger = logging.getLogger(__name__)
+        self.__logger = ClientLogger.setup()
         self.__opts = ClientOptionParser().parse_args()[0]
         self.__tinkerAccessServerApi = TinkerAccessServerApi(self.__opts)
 
@@ -67,7 +64,7 @@ class Client(Machine):
                 'source': [State.IN_USE],
                 'trigger': Trigger.LOGIN,
                 'dest': State.IN_USE,
-                'conditions': ['is_current_badge_code']
+                'conditions': ['should_extend_current_session']
             },
 
             {
@@ -109,18 +106,65 @@ class Client(Machine):
         self.__show_blue_led()
         self.__show_scan_badge()
 
+    def __do_login(self, *args, **kwargs):
+        badge_code = kwargs.get('badge_code')
+
+        # noinspection PyBroadException
+        try:
+            self.__show_attempting_login(1)
+            self.__update_user_context(
+                self.__tinkerAccessServerApi.login(badge_code)
+            )
+            remaining_seconds = self.__user_info.get('remaining_seconds')
+            self.__show_access_granted(1)
+
+        except UnauthorizedAccessException as e:
+            self.__handle_unauthorized_access_exception()
+            self.__ensure_idle()
+        except Exception as e:
+            self.__handle_unexpected_exception()
+            self.__ensure_idle()
+            raise e
+
+        return self.__user_info is not None
+
+    def __show_attempting_login(self, delay=0):
+        self.__device.write(
+            Channel.LCD,
+            'ATTEMPTING'.center(maximum_lcd_characters, ' '),
+            'LOGIN...'.center(maximum_lcd_characters, ' ')
+        )
+        time.sleep(delay)
+
+    def __update_user_context(self, user_info):
+        self.__user_info = user_info
+        for handler in self.__logger.handlers:
+            for context_filter in handler.filters:
+                update_user_context = getattr(context_filter, "update_user_context", None)
+                if callable(update_user_context):
+                    context_filter.update_user_context(self.__user_info)
+
+    def __handle_unauthorized_access_exception(self):
+        self.__show_red_led()
+        self.__show_access_denied(2)
+
+    def __show_access_denied(self, delay=0):
+        self.__device.write(
+            Channel.LCD,
+            'ACCESS DENIED'.center(maximum_lcd_characters, ' '),
+            'TAKE THE CLASS'.center(maximum_lcd_characters, ' ')
+        )
+        time.sleep(delay)
+
+    def __show_red_led(self):
+        self.__device.write(Channel.LED, True, False, False)
+
     def __do_logout(self):
         self.__cancel_logout_timer()
 
         if self.__user_info:
             badge_code = self.__user_info.get('badge_code')
-            # noinspection PyBroadException
-            try:
-                self.__tinkerAccessServerApi.logout(badge_code)
-            except Exception:
-                # ignore any exceptions, we don't care on logout,
-                # other utilities further up the stack will log any exceptions
-                pass
+            threading.Timer(0, self.__tinkerAccessServerApi.logout, (badge_code, )).start()
 
         self.__update_user_context(None)
 
@@ -130,45 +174,13 @@ class Client(Machine):
     def __show_scan_badge(self):
         self.__device.write(
             Channel.LCD,
-            'Scan Badge'.center(maximum_lcd_characters, ' '),
-            'To Login'.center(maximum_lcd_characters, ' ')
+            'SCAN BADGE'.center(maximum_lcd_characters, ' '),
+            'TO LOGIN'.center(maximum_lcd_characters, ' ')
         )
 
     #
     # in_use -- The machine is currently in use and the logout timer is ticking...
     #
-
-    def __do_login(self, *args, **kwargs):
-        badge_code = kwargs.get('badge_code')
-
-        try:
-            self.__show_attempting_login(1)
-            self.__update_user_context(
-                self.__tinkerAccessServerApi.login(badge_code)
-            )
-            remaining_seconds = self.__user_info.get('remaining_seconds')
-            self.__show_access_granted(1)
-
-        except UnauthorizedAccessException:
-            self.__show_access_denied(2)
-            self.__ensure_idle()
-
-        return self.__user_info is not None
-
-    def __show_attempting_login(self, delay=0):
-        self.__device.write(
-            Channel.LCD,
-            'Attempting'.center(maximum_lcd_characters, ' '),
-            'Login...'.center(maximum_lcd_characters, ' ')
-        )
-        time.sleep(delay)
-
-    def __update_user_context(self, user_info):
-        self.__user_info = user_info
-        for context_filter in self.__logger.filters:
-            update_user_context = getattr(context_filter, "update_user_context", None)
-            if callable(update_user_context):
-                context_filter.update_user_context(self.__user_info)
 
     def __ensure_in_use(self):
         self.__enable_power()
@@ -180,7 +192,7 @@ class Client(Machine):
     def __show_access_granted(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Access Granted'.center(maximum_lcd_characters, ' '),
+            'ACCESS GRANTED'.center(maximum_lcd_characters, ' '),
         )
         time.sleep(delay)
 
@@ -231,7 +243,7 @@ class Client(Machine):
 
         self.__logout_timer = None
 
-    def __extend_sesssion(self):
+    def __extend_session(self):
         self.__cancel_logout_timer()
 
         # TODO: add api call to let server know that time has been extended...
@@ -254,26 +266,10 @@ class Client(Machine):
 
         self.__start_logout_timer()
 
-    #
-    #  A login attempt was made, and the user is was not authorized to use the machine,
-    #
-
-    def __show_access_denied(self, delay=0):
-        self.__show_red_led()
-        self.__device.write(
-            Channel.LCD,
-            'Access Denied'.center(maximum_lcd_characters, ' '),
-            'Take the class'.center(maximum_lcd_characters, ' ')
-        )
-        time.sleep(delay)
-
-    def __show_red_led(self):
-        self.__device.write(Channel.LED, True, False, False)
-
     def __show_session_extended(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Session Extended'.center(maximum_lcd_characters, ' ')
+            'SESSION EXTENDED'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
         self.__show_remaining_time()
@@ -281,8 +277,8 @@ class Client(Machine):
     def __show_no_extensions_remaining(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'No Extensions'.center(maximum_lcd_characters, ' '),
-            'Remaining...'.center(maximum_lcd_characters, ' ')
+            'NO EXTENSIONS'.center(maximum_lcd_characters, ' '),
+            'REMAINING...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
         self.__show_remaining_time()
@@ -294,17 +290,10 @@ class Client(Machine):
     def __show_training_mode_activated(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Training Mode'.center(maximum_lcd_characters, ' '),
-            'Activated...'.center(maximum_lcd_characters, ' ')
+            'TRAINING MODE'.center(maximum_lcd_characters, ' '),
+            'ACTIVATED...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
-
-    def __show_scan_trainer_badge(self):
-        self.__device.write(
-            Channel.LCD,
-            'Scan'.center(maximum_lcd_characters, ' '),
-            'Trainer Badge...'.center(maximum_lcd_characters, ' ')
-        )
 
     def __activate_trainer(self, badge_code):
         # Note: currently we call the normal login method on the tinkerAccessServer
@@ -316,27 +305,46 @@ class Client(Machine):
                 self.__tinkerAccessServerApi.login(badge_code)
             )
             self.__show_trainer_accepted(1)
-            self.__show_scan_student_badge()
+            self.__prompt_for_student_badge()
 
         except UnauthorizedAccessException:
-            self.__show_access_denied(2)
-            self.__show_scan_trainer_badge()
+            self.__handle_unauthorized_access_exception()
+            self.__prompt_for_trainer_badge()
+        except Exception as e:
+            self.__handle_unexpected_exception()
+            self.__prompt_for_trainer_badge()
+            raise e
 
         return self.__user_info is not None
+
+    def __prompt_for_trainer_badge(self):
+        self.__show_blue_led()
+        self.__show_scan_trainer_badge()
+
+    def __show_scan_trainer_badge(self):
+        self.__device.write(
+            Channel.LCD,
+            'SCAN'.center(maximum_lcd_characters, ' '),
+            'TRAINER BADGE...'.center(maximum_lcd_characters, ' ')
+        )
 
     def __show_trainer_accepted(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Trainer'.center(maximum_lcd_characters, ' '),
-            'Accepted...'.center(maximum_lcd_characters, ' ')
+            'TRAINER'.center(maximum_lcd_characters, ' '),
+            'ACCEPTED...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
+
+    def __prompt_for_student_badge(self):
+        self.__show_blue_led()
+        self.__show_scan_student_badge()
 
     def __show_scan_student_badge(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Scan'.center(maximum_lcd_characters, ' '),
-            'Student Badge...'.center(maximum_lcd_characters, ' ')
+            'SCAN'.center(maximum_lcd_characters, ' '),
+            'STUDENT BADGE...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
 
@@ -347,29 +355,51 @@ class Client(Machine):
             trainer_badge_code = self.__user_info.get('badge_code')
             self.__tinkerAccessServerApi.register_user(trainer_id, trainer_badge_code, badge_code)
             self.__show_student_registered(1)
-
         except UserRegistrationException:
-            self.__show_access_denied(2)
-
-        self.__show_scan_student_badge()
-        self.__show_blue_led()
+            self.__handle_user_registration_exception()
+            self.__show_unknown_user(2)
+        except Exception as e:
+            self.__handle_user_registration_exception()
+            self.__handle_unexpected_exception()
+            raise e
+        finally:
+            self.__prompt_for_student_badge()
 
     def __show_attempting_registration(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Attempting'.center(maximum_lcd_characters, ' '),
-            'Registration...'.center(maximum_lcd_characters, ' ')
+            'ATTEMPTING'.center(maximum_lcd_characters, ' '),
+            'REGISTRATION...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
 
     def __show_student_registered(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Student'.center(maximum_lcd_characters, ' '),
-            'Registered...'.center(maximum_lcd_characters, ' ')
+            'STUDENT'.center(maximum_lcd_characters, ' '),
+            'REGISTERED...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
 
+    def __handle_user_registration_exception(self):
+        self.__show_red_led()
+        self.__show_registration_failed(2)
+
+    def __show_registration_failed(self, delay=0):
+        self.__device.write(
+            Channel.LCD,
+            'REGISTRATION'.center(maximum_lcd_characters, ' '),
+            'FAILED...'.center(maximum_lcd_characters, ' ')
+        )
+        time.sleep(delay)
+
+    def __show_unknown_user(self, delay=0):
+        self.__device.write(
+            Channel.LCD,
+            'UNKNOWN'.center(maximum_lcd_characters, ' '),
+            'USER...'.center(maximum_lcd_characters, ' ')
+        )
+        time.sleep(delay)
     #
     # logout/terminated - the user has logged out, or the client is shutting down
     #
@@ -397,26 +427,45 @@ class Client(Machine):
     def __show_disabling_power(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Disabling'.center(maximum_lcd_characters, ' '),
-            'Power...'.center(maximum_lcd_characters, ' ')
+            'DISABLING'.center(maximum_lcd_characters, ' '),
+            'POWER...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
 
     def __show_coasting_down(self, delay=0):
         self.__device.write(
             Channel.LCD,
-            'Coasting'.center(maximum_lcd_characters, ' '),
-            'Down...'.center(maximum_lcd_characters, ' ')
+            'COASTING'.center(maximum_lcd_characters, ' '),
+            'DOWN...'.center(maximum_lcd_characters, ' ')
         )
         time.sleep(delay)
 
+    def __handle_unexpected_exception(self):
+        self.__show_red_led()
+        self.__show_error_occurred(2)
+        self.__show_please_try_again(2)
+
+    def __show_error_occurred(self, delay=0):
+        self.__device.write(
+            Channel.LCD,
+            'THERE WAS AN'.center(maximum_lcd_characters, ' '),
+            'UNEXPECTED ERROR'.center(maximum_lcd_characters, ' ')
+        )
+        time.sleep(delay)
+
+    def __show_please_try_again(self, delay=0):
+        self.__device.write(
+            Channel.LCD,
+            'PLEASE'.center(maximum_lcd_characters, ' '),
+            'TRY AGAIN...'.center(maximum_lcd_characters, ' ')
+        )
+        time.sleep(delay)
     #
     # a badge code has been detected on the serial input
     #
 
     def handle_badge_code(self, *args, **kwargs):
         badge_code = kwargs.get('badge_code')
-        # TODO: refactor to just pass badge_code as an argument
         if self.state is State.IN_TRAINING:
             if not self.__user_info:
                 if self.__activate_trainer(badge_code):
@@ -424,7 +473,8 @@ class Client(Machine):
                 else:
                     self.__show_scan_trainer_badge()
             else:
-                self.__register_student(badge_code)
+                if not self.__is_current_badge_code(*args, **kwargs):
+                    self.__register_student(badge_code)
         else:
             self.login(*args, **kwargs)
 
@@ -458,7 +508,6 @@ class Client(Machine):
         return self.__do_login(*args, **kwargs)
 
     def is_waiting_for_training(self, *args, **kwargs):
-
         current = time.time()
         while not self.is_terminated() and time.time() - current < training_mode_delay_seconds \
                 and self.__device.read(Channel.PIN, self.__opts.get(ClientOption.PIN_LOGOUT)):
@@ -466,12 +515,17 @@ class Client(Machine):
 
         return self.__device.read(Channel.PIN, self.__opts.get(ClientOption.PIN_LOGOUT))
 
-    def is_current_badge_code(self, *args, **kwargs):
+    def should_extend_current_session(self, *args, **kwargs):
+        if self.__is_current_badge_code(*args, **kwargs):
+            self.__extend_session()
+            return True
+        return False
+
+    def __is_current_badge_code(self, *args, **kwargs):
         new_badge_code = kwargs.get('badge_code')
         current_badge_code = self.__user_info.get('badge_code') if self.__user_info else None
 
         if current_badge_code and current_badge_code == new_badge_code:
-            self.__extend_sesssion()
             return True
 
         return False
@@ -495,19 +549,13 @@ class Client(Machine):
     @staticmethod
     def run(opts, args):
         should_exit = False
-        logger = logging.getLogger(__name__)
+        logger = ClientLogger.setup()
         restart_delay = opts.get(ClientOption.RESTART_DELAY)
 
         while not should_exit:
             try:
                 with DeviceApi(opts) as device, \
                         Client(device) as client:
-
-                # TODO: implement correctly...
-                # RemoteCommandHandler() as handler:
-                #     handler.on(Command.STOP, client.terminate)
-                #     handler.on(Command.STATUS, client.status)
-                #     handler.listen()
 
                     device.on(
                         Channel.SERIAL,
