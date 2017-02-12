@@ -1,8 +1,12 @@
 #!/usr/bin/env python
+import sys
+sys.path.append('/usr/local/lib/python2.7/dist-packages/tinker_access_client')
+
+# Reference: https://wiki.debian.org/LSBInitScripts
 
 ### BEGIN INIT INFO
 # Provides:          tinker-access-client
-# Required-Start:    $remote_fs $syslog $network
+# Required-Start:    $all
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
