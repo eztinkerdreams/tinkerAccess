@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# import sys
-# sys.path.append('/usr/local/lib/python2.7/dist-packages/tinker_access_client')
+import sys
+sys.path.append('/usr/local/lib/python2.7/dist-packages/tinker_access_client')
 
 # Reference: https://wiki.debian.org/LSBInitScripts
 
@@ -17,23 +17,23 @@
 
 import sys
 import logging
-# from ClientLogger import ClientLogger
-from ClientOption import ClientOption
+
+from ClientLogger import ClientLogger
 from ClientDaemon import ClientDaemon
 from CommandHandler import CommandHandler
 from ClientOptionParser import ClientOptionParser, Command
 
 
 def run():
-    # logger = ClientLogger.setup()
+    logger = ClientLogger.setup()
     (opts, args) = ClientOptionParser().parse_args()
 
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(levelname)s %(message)s',
-                        filename=opts.get(ClientOption.LOG_FILE),
-                        filemode='w')
-
-    logger = logging.getLogger()
+    # logging.basicConfig(level=logging.DEBUG,
+    #                     format='%(asctime)s %(levelname)s %(message)s',
+    #                     filename=opts.get(ClientOption.LOG_FILE),
+    #                     filemode='w')
+    #
+    # logger = logging.getLogger()
 
     try:
         with CommandHandler(opts, args) as handler:
@@ -44,7 +44,7 @@ def run():
             return handler.handle_command()
 
     except Exception as e:
-        logger.exception(e)
+        #logger.exception(e)
         sys.stdout.write(str(e))
         sys.stdout.flush()
         sys.exit(1)
