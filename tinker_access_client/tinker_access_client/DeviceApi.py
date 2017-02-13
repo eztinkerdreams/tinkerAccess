@@ -77,12 +77,12 @@ class DeviceApi(object):
         try:
             import lcdModule as LCD
         except Exception as e:
-            try:
-                import debug.VirtualLcd.VirtualLCD as LCD
-            except Exception as ex:
-                self.__logger.debug('Failed to patch lcdModule.LCD module with virtual LCD module.')
-                self.__logger.exception(ex)
-                raise e
+            # try:
+            #     import debug.VirtualLcd.VirtualLCD as LCD
+            # except Exception as ex:
+            #     self.__logger.debug('Failed to patch lcdModule.LCD module with virtual LCD module.')
+            self.__logger.exception(e)
+            raise e
 
         LCD.lcd_init()
         self.__LCD = LCD
@@ -96,14 +96,15 @@ class DeviceApi(object):
             self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
 
         except Exception as e:
-            try:
-                # noinspection PyPep8Naming
-                from debug.VirtualSerial import VirtualSerial as serial
-                self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
-            except Exception as ex:
-                self.__logger.debug('Failed to patch serial module with virtual LCD module.')
-                self.__logger.exception(ex)
-                raise e
+            # try:
+            #     # noinspection PyPep8Naming
+            #     from debug.VirtualSerial import VirtualSerial as serial
+            #     self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
+            # except Exception as ex:
+            #     self.__logger.debug('Failed to patch serial module with virtual LCD module.')
+
+            self.__logger.exception(e)
+            raise e
 
         self.__serial_connection.flushInput()
         self.__serial_connection.flushOutput()
@@ -112,6 +113,9 @@ class DeviceApi(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.__stop()
+
+    def __stop(self):
         self.__should_exit = True
         self.__do_cleanup()
 
@@ -125,6 +129,8 @@ class DeviceApi(object):
         except Exception as e:
             self.__logger.debug('Failed to execute callback.')
             self.__logger.exception(e)
+            self.__stop()
+            raise e
         finally:
             self.__edge_detected = True
 
@@ -136,6 +142,8 @@ class DeviceApi(object):
                     self.__do_callback(call_back, badge_code=badge_code)
             except Exception as e:
                 self.__logger.exception(e)
+                self.__stop()
+                raise e
             time.sleep(.5)
 
     def __read_from_serial(self):
