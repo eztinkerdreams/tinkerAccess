@@ -19,6 +19,7 @@ class Channel(object):
 class DeviceApi(object):
     def __init__(self, opts):
         self.__opts = opts
+        self.__fault = None
         self.__should_exit = False
         self.__edge_detected = False
         self.__logger = logging.getLogger(__name__)
@@ -112,8 +113,11 @@ class DeviceApi(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.__should_exit = True
+        self.__stop()
         self.__do_cleanup()
+
+    def __stop(self):
+        self.__should_exit = True
 
     def __do_cleanup(self):
         self.__write_to_lcd('System Offline!', "Try later...")
@@ -123,8 +127,8 @@ class DeviceApi(object):
         try:
             call_back(*args, **kwargs)
         except Exception as e:
-            self.__logger.debug('Failed to execute callback.')
-            self.__logger.exception(e)
+            self.__fault = e
+            self.__stop()
         finally:
             self.__edge_detected = True
 
@@ -135,7 +139,8 @@ class DeviceApi(object):
                 if badge_code:
                     self.__do_callback(call_back, badge_code=badge_code)
             except Exception as e:
-                self.__logger.exception(e)
+                self.__fault = e
+                self.__stop()
             time.sleep(.5)
 
     def __read_from_serial(self):
@@ -260,4 +265,9 @@ class DeviceApi(object):
         while not self.__should_exit and not self.__edge_detected:
             time.sleep(1)
         self.__edge_detected = False
+        self.__raise_fault()
+
+    def __raise_fault(self):
+        if self.__fault:
+            raise self.__fault
 
