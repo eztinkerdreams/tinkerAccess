@@ -112,6 +112,9 @@ class DeviceApi(object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.__stop()
+
+    def __stop(self):
         self.__should_exit = True
         self.__do_cleanup()
 
@@ -125,6 +128,8 @@ class DeviceApi(object):
         except Exception as e:
             self.__logger.debug('Failed to execute callback.')
             self.__logger.exception(e)
+            self.__stop()
+            raise e
         finally:
             self.__edge_detected = True
 
@@ -136,6 +141,8 @@ class DeviceApi(object):
                     self.__do_callback(call_back, badge_code=badge_code)
             except Exception as e:
                 self.__logger.exception(e)
+                self.__stop()
+                raise e
             time.sleep(.5)
 
     def __read_from_serial(self):
