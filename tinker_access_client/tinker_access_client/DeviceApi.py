@@ -125,6 +125,7 @@ class DeviceApi(object):
         except Exception as e:
             self.__logger.debug('Failed to execute callback.')
             self.__logger.exception(e)
+            raise e
         finally:
             self.__edge_detected = True
 
@@ -136,6 +137,7 @@ class DeviceApi(object):
                     self.__do_callback(call_back, badge_code=badge_code)
             except Exception as e:
                 self.__logger.exception(e)
+                raise e
             time.sleep(.5)
 
     def __read_from_serial(self):
