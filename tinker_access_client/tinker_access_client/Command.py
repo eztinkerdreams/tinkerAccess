@@ -1,10 +1,10 @@
 class Command(object):
+    #TODO: add some descriptions
     START = dict(command='start', description='start desc...')
     STOP = dict(command='stop', description='stop desc...')
     STATUS = dict(command='status', description='status desc...')
     RESTART = dict(command='restart', description='restart...')
-
-    # UPDATE = dict(command='update', description='update...')
+    UPDATE = dict(command='update', description='update...')
     # RELOAD = dict(command='reload', description='reload...')
     # REMOVE = dict(command='remove', description='remove...')
     # UNINSTALL = dict(command='uninstall', description='uninstall...')
