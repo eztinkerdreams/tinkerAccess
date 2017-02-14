@@ -17,12 +17,13 @@ ClientOptionDefaults = {
     ClientOption.RESTART_DELAY: 5,
     ClientOption.PIN_LED_GREEN: 19,
     ClientOption.PIN_POWER_RELAY: 17,
+    ClientOption.FORCE_UPDATE: False,
     ClientOption.LOGOUT_COAST_TIME: 0,
     ClientOption.PIN_CURRENT_SENSE: 12,
     ClientOption.SERIAL_PORT_SPEED: 9600,
     ClientOption.MAX_POWER_DOWN_TIMEOUT: 5,
     ClientOption.SERIAL_PORT_NAME: '/dev/ttyUSB0',
-    ClientOption.SERVER_ADDRESS: 'http://10.2.1.2:5000',
+    ClientOption.SERVER_ADDRESS: 'http://localhost:5000',
     ClientOption.CONFIG_FILE: '/etc/{0}.conf'.format(PackageInfo.pip_package_name),
     ClientOption.PID_FILE: '/var/run/{0}.pid'.format(PackageInfo.pip_package_name),
     ClientOption.LOG_FILE: '/var/log/{0}.log'.format(PackageInfo.pip_package_name),
@@ -54,8 +55,8 @@ class ClientOptionParser(object):
         usage += '\n\nTinkerMill Raspberry Pi access control system.' \
                  '\n\nExamples:\n\n' \
                  '  Start the client configured to use a different tinker-access-server ' \
-                 '(i.e. a development server) and an alternative serial port' \
-                 '\n\n  \'sudo {0} --server-address=http://<server-address> ' \
+                 'and an alternative serial port.' \
+                 '\n\n  \'sudo {0} start --server-address=http://<server-address> ' \
                  '--serial-port-name=/dev/ttyUSB1\' '.format(PackageInfo.python_package_name)
 
         self.__parser.set_usage(usage)
@@ -83,6 +84,15 @@ class ClientOptionParser(object):
             help='run in the foreground (a.k.a debug mode) [default:\'%default\']',
             default=ClientOptionDefaults[ClientOption.DEBUG],
             dest=ClientOption.DEBUG,
+            action='store_true')
+
+        self.__parser.add_option(
+            '--force-update',
+            help='This option will force the update command to do an update, even when the current version '
+                 'is the latest version, or already matches the version specified in the update command'
+                 ' [default:\'%default\']',
+            default=ClientOptionDefaults[ClientOption.FORCE_UPDATE],
+            dest=ClientOption.FORCE_UPDATE,
             action='store_true')
 
         self.__parser.add_option(
