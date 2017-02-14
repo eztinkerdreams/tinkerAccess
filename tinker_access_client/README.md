@@ -9,10 +9,12 @@ The device also allows for trainers to register users after completing a class b
 Training mode can be entered by scanning the trainers RFID badge and then holding down the power reset button for continually for 3 seconds.
 ### Installation:
 
+
+
 Ensure you have the latest version of PIP installed:
 
 ```commandline
-sudo easy_install --upgrade pip
+sudo pip --upgrade pip
 ```
 
 Install the latest version of the client:

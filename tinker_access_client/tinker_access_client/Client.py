@@ -3,6 +3,7 @@ import logging
 import threading
 from transitions import Machine
 
+from State import State
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from DeviceApi import DeviceApi, Channel
@@ -14,14 +15,6 @@ from UnauthorizedAccessException import UnauthorizedAccessException
 maximum_lcd_characters = 16
 training_mode_delay_seconds = 2
 logout_timer_interval_seconds = 1
-
-
-class State(object):
-    INITIALIZED = 'initialized'
-    IDLE = 'idle'
-    IN_USE = 'in_use'
-    IN_TRAINING = 'in_training'
-    TERMINATED = 'terminated'
 
 
 class Trigger(object):
@@ -554,8 +547,7 @@ class Client(Machine):
 
         while not should_exit:
             try:
-                with DeviceApi(opts) as device, \
-                        Client(device) as client:
+                with DeviceApi(opts) as device, Client(device) as client:
 
                     device.on(
                         Channel.SERIAL,
