@@ -6,12 +6,14 @@ from subprocess import \
     check_output, \
     CalledProcessError
 
+from State import State
 from Client import Client
 from Command import Command
 from daemonize import Daemonize
 from PackageInfo import PackageInfo
 from ClientOption import ClientOption
 from ClientLogger import ClientLogger
+from CommandExecutor import CommandExecutor
 
 
 # noinspection PyClassHasNoInit
@@ -79,6 +81,26 @@ class ClientDaemon:
                 logger.exception(e)
 
     @staticmethod
+    def update(opts, args):
+        if not ClientDaemon.__is_in_use(opts, args):
+            logger = ClientLogger.setup()
+            try:
+                ClientDaemon.stop(opts, args)
+                CommandExecutor().execute_commands([
+                    'echo FOOBAR',
+                    'pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir {0}'
+                    .format(PackageInfo.pip_package_name)
+                ])
+            except Exception as e:
+                logger.debug('%s update failed, remediation maybe required!', PackageInfo.pip_package_name)
+                logger.exception(e)
+                raise e
+        else:
+            sys.stdout.write('{0} is currently in use, try again later...\n'.format(PackageInfo.pip_package_name))
+            sys.stdout.flush()
+            sys.exit(1)
+
+    @staticmethod
     def restart(opts, args):
         logger = ClientLogger.setup()
         restart_delay = opts.get(ClientOption.RESTART_DELAY)
@@ -102,7 +124,7 @@ class ClientDaemon:
             sys.stdout.flush()
             sys.exit(0)
         else:
-            sys.stdout.write('terminated\n')
+            sys.stdout.write('{0}\n'.format(State.TERMINATED))
             sys.stdout.flush()
             sys.exit(1)
 
@@ -111,18 +133,23 @@ class ClientDaemon:
         process_ids = ClientDaemon.__get_process_ids()
         status_file = opts.get(ClientOption.STATUS_FILE)
 
-        status = terminated = 'terminated'
+        status = terminated = State.TERMINATED
         if os.path.isfile(status_file):
             with open(status_file, 'r') as f:
-                status = f.readline()
+                status = f.readline().strip()
 
         return status if status is not terminated and len(process_ids) > 0 else None
+
+    @staticmethod
+    def __is_in_use(opts, args):
+        status = ClientDaemon.__status(opts, args)
+        return status == State.IN_USE or status == State.IN_TRAINING
 
     @staticmethod
     def __get_process_ids():
         process_ids = []
 
-        cmd = ['pgrep', '-f', '(/{0}\s+(start|restart))'.format(PackageInfo.pip_package_name)]
+        cmd = ['pgrep', '-f', '(/{0}\s+(start|restart|update))'.format(PackageInfo.pip_package_name)]
         for process_id in check_output(cmd).splitlines():
             process_id = int(process_id)
             is_current_process = process_id == int(os.getpid())
