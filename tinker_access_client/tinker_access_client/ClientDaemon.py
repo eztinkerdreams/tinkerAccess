@@ -13,6 +13,7 @@ from daemonize import Daemonize
 from PackageInfo import PackageInfo
 from ClientOption import ClientOption
 from ClientLogger import ClientLogger
+from LoggedRequest import LoggedRequest
 from CommandExecutor import CommandExecutor
 
 
@@ -82,6 +83,9 @@ class ClientDaemon:
 
     @staticmethod
     def update(opts, args):
+
+        #TODO: should take a version number as an argument, do update to that version
+
         if not PackageInfo.version:
             sys.stdout.write('The \'update\' command is not supported when\n')
             sys.stdout.write('when the {0} is not versioned. (i.e. installed with the development -e option.\n'
@@ -92,11 +96,25 @@ class ClientDaemon:
         if not ClientDaemon.__is_in_use(opts, args):
             logger = ClientLogger.setup()
             try:
-                ClientDaemon.stop(opts, args)
-                CommandExecutor().execute_commands([
-                    'pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir {0}'
-                    .format(PackageInfo.pip_package_name)
-                ])
+                response = LoggedRequest.get('https://pypi.python.org/pypi/tinker-access-client/json')
+                response.raise_for_status()
+                latest_version = response.json().get('info').get('version')
+
+                #TODO: check if this release exists... int the releases section
+
+                logger.debug('latest version: %s', latest_version)
+                logger.debug('current version: %s', PackageInfo.version)
+                logger.debug('version match? %s', PackageInfo.version == latest_version)
+
+                #TODO: string comparison is off due to encoding
+                if PackageInfo.version != latest_version:
+
+                    ClientDaemon.stop(opts, args)
+                    CommandExecutor().execute_commands([
+                        'pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir {0}'
+                        .format(PackageInfo.pip_package_name)
+                    ])
+
             except Exception as e:
                 logger.debug('%s update failed, remediation maybe required!', PackageInfo.pip_package_name)
                 logger.exception(e)
