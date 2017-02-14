@@ -16,6 +16,7 @@ Ensure you have the latest version of PIP installed:
 sudo pip --upgrade pip
 ```
 
+
 Install the latest version of the client:
 ```commandline
 sudo pip install --upgrade tinker-access-client 
