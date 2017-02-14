@@ -7,6 +7,7 @@ To run tests, we can simply do:
 
 The Setup tools will take care of installing dependencies (i.e. nose, mock) and running the test suite.
 
+
 # TODO: add example to run a single test.
 # TODO: add info about manual testing with --debug flag on non-rpi devices
 
