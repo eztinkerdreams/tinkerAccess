@@ -83,12 +83,13 @@ class ClientDaemon:
 
     @staticmethod
     def update(opts, args):
-        if not PackageInfo.version:
-            sys.stdout.write('The \'update\' command is not supported when\n')
-            sys.stdout.write('when the {0} is not versioned. (i.e. installed with the development -e option.\n'
-                             .format(PackageInfo.pip_package_name))
-            sys.stdout.flush()
-            sys.exit(1)
+
+        # if not PackageInfo.version:
+        #     sys.stdout.write('The \'update\' command is not supported when\n')
+        #     sys.stdout.write('when the {0} is not versioned. (i.e. installed with the development -e option.\n'
+        #                      .format(PackageInfo.pip_package_name))
+        #     sys.stdout.flush()
+        #     sys.exit(1)
 
         if not ClientDaemon.__is_in_use(opts, args):
             logger = ClientLogger.setup()
@@ -113,23 +114,20 @@ class ClientDaemon:
 
     @staticmethod
     def __should_update(opts, requested_version=None):
+        if opts.get(ClientOption.FORCE_UPDATE):
+            return True
+
         response = LoggedRequest.get('https://pypi.python.org/pypi/{0}/json'.format(PackageInfo.pip_package_name))
         response.raise_for_status()
         data = response.json()
 
         current_version = PackageInfo.version
-        latest_version = data.get('info', { }).get('version', None)
+        latest_version = data.get('info', {}).get('version', None)
 
-        force_update = opts.get(ClientOption.FORCE_UPDATE)
         if not requested_version:
-            return current_version != latest_version or force_update
+            return current_version != latest_version
 
-        releases = data.get('releases', {}).keys()
-        release_exists = any(release for release in releases if release == requested_version)
-        if not release_exists:
-            raise RuntimeError('{0} ({1}) does not exists'.format(PackageInfo.pip_package_name, requested_version))
-
-        return current_version != requested_version or force_update
+        return current_version != requested_version
 
     @staticmethod
     def restart(opts, args):
