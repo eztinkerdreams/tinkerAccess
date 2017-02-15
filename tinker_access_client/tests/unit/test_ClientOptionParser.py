@@ -39,10 +39,10 @@ class ClientOptionParserTests(unittest.TestCase):
 
         actual_keys = opts.keys()
         actual_number_of_options = len(actual_keys)
-        self.assertEqual(actual_number_of_options, expected_number_of_options)
 
         for key in expected_keys:
             self.assertTrue(key.lower() in actual_keys, 'client options is missing the \'%s\' option' % key.lower())
 
+        self.assertEqual(actual_number_of_options, expected_number_of_options)
         self.assertEqual(opts.get(ClientOption.DEVICE_ID), command_line_device_id)
         self.assertEqual(opts.get(ClientOption.LOG_LEVEL), config_file_log_level)

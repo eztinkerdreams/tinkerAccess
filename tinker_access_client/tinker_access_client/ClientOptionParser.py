@@ -14,11 +14,12 @@ ClientOptionDefaults = {
     ClientOption.PIN_LED_RED: 21,
     ClientOption.DEVICE_ID: None,
     ClientOption.PIN_LED_BLUE: 20,
-    ClientOption.RESTART_DELAY: 5,
+    ClientOption.REBOOT_DELAY: 5,
     ClientOption.PIN_LED_GREEN: 19,
     ClientOption.PIN_POWER_RELAY: 17,
     ClientOption.LOGOUT_COAST_TIME: 0,
     ClientOption.PIN_CURRENT_SENSE: 12,
+    ClientOption.REBOOT_ON_ERROR: True,
     ClientOption.SERIAL_PORT_SPEED: 9600,
     ClientOption.MAX_POWER_DOWN_TIMEOUT: 5,
     ClientOption.SERIAL_PORT_NAME: '/dev/ttyUSB0',
@@ -151,10 +152,18 @@ class ClientOptionParser(object):
             action='store')
 
         self.__parser.add_option(
-            '--restart-delay',
-            help='seconds to wait before attempting to re-start after a failure [default:%default]',
-            default=ClientOptionDefaults[ClientOption.RESTART_DELAY],
-            dest=ClientOption.RESTART_DELAY,
+            '--reboot-on-error',
+            help='Any unhandled errors will cause the device to reboot after the specified '
+                 '--reboot-delay. This behavior is only supported on Raspberry Pi devices. [default:\'%default\']',
+            default=ClientOptionDefaults[ClientOption.REBOOT_ON_ERROR],
+            dest=ClientOption.REBOOT_ON_ERROR,
+            action='store_true')
+
+        self.__parser.add_option(
+            '--reboot-delay',
+            help='seconds to wait before attempting to reboot the device after an unhandled error [default:%default]',
+            default=ClientOptionDefaults[ClientOption.REBOOT_DELAY],
+            dest=ClientOption.REBOOT_DELAY,
             type='int',
             action='store')
 

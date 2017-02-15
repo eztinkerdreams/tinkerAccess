@@ -109,12 +109,12 @@ class ClientDaemon:
     @staticmethod
     def restart(opts, args):
         logger = ClientLogger.setup()
-        restart_delay = opts.get(ClientOption.RESTART_DELAY)
+        reboot_delay = opts.get(ClientOption.REBOOT_DELAY)
         try:
             args[0] = Command.STOP.get('command')
             ClientDaemon.stop(opts, args)
-            logger.debug('Restarting in %s seconds...', restart_delay)
-            time.sleep(restart_delay)
+            logger.debug('Restarting in %s seconds...', reboot_delay)
+            time.sleep(reboot_delay)
             args[0] = Command.START.get('command')
             ClientDaemon.start(opts, args)
         except Exception as e:

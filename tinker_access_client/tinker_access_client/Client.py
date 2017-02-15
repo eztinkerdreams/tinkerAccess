@@ -1,5 +1,4 @@
 import time
-import logging
 import threading
 from transitions import Machine
 
@@ -16,7 +15,6 @@ from UnauthorizedAccessException import UnauthorizedAccessException
 maximum_lcd_characters = 16
 training_mode_delay_seconds = 2
 logout_timer_interval_seconds = 1
-
 
 
 class Trigger(object):
@@ -545,7 +543,8 @@ class Client(Machine):
     def run(opts, args):
         should_exit = False
         logger = ClientLogger.setup()
-        restart_delay = opts.get(ClientOption.RESTART_DELAY)
+        reboot_delay = opts.get(ClientOption.REBOOT_DELAY)
+        reboot_on_error = opts.get(ClientOption.REBOOT_ON_ERROR)
 
         while not should_exit:
             try:
@@ -575,18 +574,19 @@ class Client(Machine):
 
             except Exception as e:
                 logger.exception(e)
-                logger.debug('Retrying in %s seconds...', restart_delay)
-                time.sleep(restart_delay)
 
-                # def restart():
-                #     CommandExecutor().execute_commands([
-                #         'reboot'
-                #     ])
-                #
-                # threading.Timer(
-                #     restart_delay,
-                #     restart
-                # ).start()
+                if reboot_on_error:
 
+                    # reboot is only supported on Raspberry PI devices
+                    # noinspection PyBroadException
+                    try:
+                        # noinspection PyUnresolvedReferences
+                        import RPi.GPIO
+                        logger.debug('Rebooting in %s seconds...', reboot_delay)
+                        CommandExecutor().execute_commands([
+                            'sleep {0}s'.format(reboot_delay if reboot_delay > 0 else 0),
+                            'reboot now'
+                        ])
+                    except Exception:
+                        pass
 
-        logging.shutdown()

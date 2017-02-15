@@ -7,8 +7,8 @@ from tinker_access_client.tinker_access_client.ClientLogger import ClientLogger
 from tinker_access_client.tinker_access_client.ClientOptionParser import ClientOptionParser
 
 
+@unittest.skip('temporarily disabled')
 class ClientTests(unittest.TestCase):
-
     @patch.object(ClientLogger, 'setup')
     @patch.object(DeviceApi, '__new__')
     @patch.object(ClientOptionParser, '__new__')

@@ -27,11 +27,9 @@ class CommandExecutor(object):
 
         fd, path = tempfile.mkstemp()
         try:
+
             with os.fdopen(fd, 'w') as tmp:
-                tmp.writelines([
-                    '#!/usr/bin/env bash\n\n',
-                    '\n'.join(commands)
-                ])
+                tmp.writelines(['#!/usr/bin/env bash\n\n'] + ['{0}\n'.format(command) for command in commands])
             self.ensure_execute_permission(path)
             self.execute_command(path)
         finally:
