@@ -10,6 +10,7 @@ Training mode can be entered by scanning the trainers RFID badge and then holdin
 ### Installation:
 
 
+
 Ensure you have the latest version of PIP installed:
 
 ```commandline
