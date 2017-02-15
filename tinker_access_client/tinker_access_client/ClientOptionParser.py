@@ -17,6 +17,7 @@ ClientOptionDefaults = {
     ClientOption.RESTART_DELAY: 5,
     ClientOption.PIN_LED_GREEN: 19,
     ClientOption.PIN_POWER_RELAY: 17,
+    ClientOption.FORCE_UPDATE: False,
     ClientOption.LOGOUT_COAST_TIME: 0,
     ClientOption.PIN_CURRENT_SENSE: 12,
     ClientOption.SERIAL_PORT_SPEED: 9600,
@@ -83,6 +84,15 @@ class ClientOptionParser(object):
             help='run in the foreground (a.k.a debug mode) [default:\'%default\']',
             default=ClientOptionDefaults[ClientOption.DEBUG],
             dest=ClientOption.DEBUG,
+            action='store_true')
+
+        self.__parser.add_option(
+            '--force-update',
+            help='This option will force the update command to do an update, even when the current version '
+                 'is the latest version, or already matches the version specified in the update command'
+                 ' [default:\'%default\']',
+            default=ClientOptionDefaults[ClientOption.FORCE_UPDATE],
+            dest=ClientOption.FORCE_UPDATE,
             action='store_true')
 
         self.__parser.add_option(
