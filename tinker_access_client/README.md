@@ -10,6 +10,7 @@ Training mode can be entered by scanning the trainers RFID badge and then holdin
 ### Installation:
 
 
+
 Ensure you have the latest version of PIP installed:
 
 ```commandline
@@ -21,6 +22,7 @@ Install the latest version of the client:
 ```commandline
 sudo pip install --upgrade tinker-access-client 
 ```
+
 
 For development purposes the The client can be installed from many different types of locations (.i.e. the local file system and other [GitHub](https://github.com) branches), you can find additional examples [here](http://www.developerfiles.com/pip-install-from-local-git-repository/).
 

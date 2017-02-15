@@ -10,7 +10,6 @@ class ClientOption:
     PIN_LED_RED = 'pin_led_red'
     STATUS_FILE = 'status_file'
     PIN_LED_BLUE = 'pin_led_blue'
-    FORCE_UPDATE = 'force_update'
     RESTART_DELAY = 'restart_delay'
     PIN_LED_GREEN = 'pin_led_green'
     SERVER_ADDRESS = 'server_address'
