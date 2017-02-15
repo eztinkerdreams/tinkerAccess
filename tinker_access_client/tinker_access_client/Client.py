@@ -7,6 +7,7 @@ from State import State
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from DeviceApi import DeviceApi, Channel
+from CommandExecutor import CommandExecutor
 from TinkerAccessServerApi import TinkerAccessServerApi
 from ClientOptionParser import ClientOptionParser, ClientOption
 from UserRegistrationException import UserRegistrationException
@@ -15,6 +16,7 @@ from UnauthorizedAccessException import UnauthorizedAccessException
 maximum_lcd_characters = 16
 training_mode_delay_seconds = 2
 logout_timer_interval_seconds = 1
+
 
 
 class Trigger(object):
@@ -575,5 +577,16 @@ class Client(Machine):
                 logger.exception(e)
                 logger.debug('Retrying in %s seconds...', restart_delay)
                 time.sleep(restart_delay)
+
+                # def restart():
+                #     CommandExecutor().execute_commands([
+                #         'reboot'
+                #     ])
+                #
+                # threading.Timer(
+                #     restart_delay,
+                #     restart
+                # ).start()
+
 
         logging.shutdown()
