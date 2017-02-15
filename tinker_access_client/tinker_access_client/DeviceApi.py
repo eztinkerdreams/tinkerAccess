@@ -47,7 +47,6 @@ class DeviceApi(object):
     def __init_gpio(self):
         try:
             import RPi.GPIO as GPIO
-
             # TODO: log print board info after init...
             # To discover information about your RPi:
             # GPIO.RPI_INFO
@@ -78,12 +77,12 @@ class DeviceApi(object):
         try:
             import lcdModule as LCD
         except Exception as e:
-            try:
-                import debug.VirtualLcd.VirtualLCD as LCD
-            except Exception as ex:
-                self.__logger.debug('Failed to patch lcdModule.LCD module with virtual LCD module.')
-                self.__logger.exception(ex)
-                raise e
+            # try:
+            #     import debug.VirtualLcd.VirtualLCD as LCD
+            # except Exception as ex:
+            #     self.__logger.debug('Failed to patch lcdModule.LCD module with virtual LCD module.')
+            #     self.__logger.exception(ex)
+            raise e
 
         LCD.lcd_init()
         self.__LCD = LCD
@@ -97,14 +96,14 @@ class DeviceApi(object):
             self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
 
         except Exception as e:
-            try:
-                # noinspection PyPep8Naming
-                from debug.VirtualSerial import VirtualSerial as serial
-                self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
-            except Exception as ex:
-                self.__logger.debug('Failed to patch serial module with virtual LCD module.')
-                self.__logger.exception(ex)
-                raise e
+            # try:
+            #     # noinspection PyPep8Naming
+            #     from debug.VirtualSerial import VirtualSerial as serial
+            #     self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
+            # except Exception as ex:
+            #     self.__logger.debug('Failed to patch serial module with virtual LCD module.')
+            #     self.__logger.exception(ex)
+            raise e
 
         self.__serial_connection.flushInput()
         self.__serial_connection.flushOutput()

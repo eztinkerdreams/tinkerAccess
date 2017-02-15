@@ -1,5 +1,4 @@
 import time
-import logging
 import threading
 from transitions import Machine
 
@@ -16,7 +15,6 @@ from UnauthorizedAccessException import UnauthorizedAccessException
 maximum_lcd_characters = 16
 training_mode_delay_seconds = 2
 logout_timer_interval_seconds = 1
-
 
 
 class Trigger(object):
@@ -575,18 +573,17 @@ class Client(Machine):
 
             except Exception as e:
                 logger.exception(e)
-                logger.debug('Retrying in %s seconds...', restart_delay)
+                logger.debug('Rebooting in %s seconds...', restart_delay)
+
+                # noinspection PyBroadException
+                try:
+                    # noinspection PyUnresolvedReferences
+                    import RPi.GPIO
+                    CommandExecutor().execute_commands([
+                        'sleep {0}s'.format(restart_delay),
+                        'reboot now'
+                    ])
+                except Exception:
+                    pass
                 time.sleep(restart_delay)
 
-                # def restart():
-                #     CommandExecutor().execute_commands([
-                #         'reboot'
-                #     ])
-                #
-                # threading.Timer(
-                #     restart_delay,
-                #     restart
-                # ).start()
-
-
-        logging.shutdown()
