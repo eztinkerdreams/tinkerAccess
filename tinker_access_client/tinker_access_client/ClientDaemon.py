@@ -83,55 +83,53 @@ class ClientDaemon:
 
     @staticmethod
     def update(opts, args):
-        pass
+        if not PackageInfo.version:
+            sys.stdout.write('The \'update\' command is not supported when\n')
+            sys.stdout.write('when the {0} is not versioned. (i.e. installed with the development -e option.\n'
+                             .format(PackageInfo.pip_package_name))
+            sys.stdout.flush()
+            sys.exit(1)
 
-        # if not PackageInfo.version:
-        #     sys.stdout.write('The \'update\' command is not supported when\n')
-        #     sys.stdout.write('when the {0} is not versioned. (i.e. installed with the development -e option.\n'
-        #                      .format(PackageInfo.pip_package_name))
-        #     sys.stdout.flush()
-        #     sys.exit(1)
-        #
-        # if not ClientDaemon.__is_in_use(opts, args):
-        #     logger = ClientLogger.setup()
-        #     try:
-        #         version = args[1] if len(args) >= 2 else None
-        #         if ClientDaemon.__should_update(opts, version):
-        #             ClientDaemon.stop(opts, args)
-        #             version = '=={0}'.format(version) if version else ''
-        #             CommandExecutor().execute_commands([
-        #                 'pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir {0}{1}'
-        #                 .format(PackageInfo.pip_package_name, version)
-        #             ])
-        #
-        #     except Exception as e:
-        #         logger.debug('%s update failed, remediation maybe required!', PackageInfo.pip_package_name)
-        #         logger.exception(e)
-        #         raise e
-        # else:
-        #     sys.stdout.write('{0} is currently in use, try again later...\n'.format(PackageInfo.pip_package_name))
-        #     sys.stdout.flush()
-        #     sys.exit(1)
+        if not ClientDaemon.__is_in_use(opts, args):
+            logger = ClientLogger.setup()
+            try:
+                version = args[1] if len(args) >= 2 else None
+                if ClientDaemon.__should_update(opts, version):
+                    ClientDaemon.stop(opts, args)
+                    version = '=={0}'.format(version) if version else ''
+                    CommandExecutor().execute_commands([
+                        'pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir {0}{1}'
+                        .format(PackageInfo.pip_package_name, version)
+                    ])
 
-    # @staticmethod
-    # def __should_update(opts, requested_version=None):
-    #     response = LoggedRequest.get('https://pypi.python.org/pypi/{0}/json'.format(PackageInfo.pip_package_name))
-    #     response.raise_for_status()
-    #     data = response.json()
-    #
-    #     current_version = PackageInfo.version
-    #     latest_version = data.get('info', { }).get('version', None)
-    #
-    #     force_update = opts.get(ClientOption.FORCE_UPDATE)
-    #     if not requested_version:
-    #         return current_version != latest_version or force_update
-    #
-    #     releases = data.get('releases', {}).keys()
-    #     release_exists = any(release for release in releases if release == requested_version)
-    #     if not release_exists:
-    #         raise RuntimeError('{0} ({1}) does not exists'.format(PackageInfo.pip_package_name, requested_version))
-    #
-    #     return current_version != requested_version or force_update
+            except Exception as e:
+                logger.debug('%s update failed, remediation maybe required!', PackageInfo.pip_package_name)
+                logger.exception(e)
+                raise e
+        else:
+            sys.stdout.write('{0} is currently in use, try again later...\n'.format(PackageInfo.pip_package_name))
+            sys.stdout.flush()
+            sys.exit(1)
+
+    @staticmethod
+    def __should_update(opts, requested_version=None):
+        response = LoggedRequest.get('https://pypi.python.org/pypi/{0}/json'.format(PackageInfo.pip_package_name))
+        response.raise_for_status()
+        data = response.json()
+
+        current_version = PackageInfo.version
+        latest_version = data.get('info', { }).get('version', None)
+
+        force_update = opts.get(ClientOption.FORCE_UPDATE)
+        if not requested_version:
+            return current_version != latest_version or force_update
+
+        releases = data.get('releases', {}).keys()
+        release_exists = any(release for release in releases if release == requested_version)
+        if not release_exists:
+            raise RuntimeError('{0} ({1}) does not exists'.format(PackageInfo.pip_package_name, requested_version))
+
+        return current_version != requested_version or force_update
 
     @staticmethod
     def restart(opts, args):
