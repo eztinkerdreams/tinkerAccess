@@ -3,6 +3,20 @@ python:
   - '2.7'
 cache: pip
 sudo: required
+
+env:
+  global:
+    - PYTHON_PACKAGE_NAME="tinker_access_client"
+    - VERSION="$(date -u '+%Y.%m.%d').${TRAVIS_BUILD_NUMBER}"
+    - PYTHON_PACKAGE_SRC="${TRAVIS_BUILD_DIR}/${PYTHON_PACKAGE_NAME}"
+    - TINKER_ACCESS_CLIENT_SRC="/usr/local/lib/python2.7/dist-packages/${PYTHON_PACKAGE_NAME}"
+    - VERSION_DEST="${TRAVIS_BUILD_DIR}/${PYTHON_PACKAGE_NAME}/${PYTHON_PACKAGE_NAME}/version.py"
+
+branches:
+  except:
+    #Important: Prevents version release 'tag' commits from initiating builds
+    - /^v[0-9a-z\-]*/
+
 install:
   - pip install twine
   - echo -e __version__="\"${VERSION}\"\n" > "${VERSION_DEST}"
@@ -43,15 +57,9 @@ after_deploy:
   #  - sudo python setup.py sdist bdist_wheel
   - twine upload -u "${PYPI_USERNAME}" -p "${PYPI_PASSWORD}" --comment "Uploaded by Travis CI" dist/*
 
-env:
-  global:
-    - PYTHON_PACKAGE_NAME="tinker_access_client"
-    - VERSION="$(date -u '+%Y.%m.%d').${TRAVIS_BUILD_NUMBER}"
-    - PYTHON_PACKAGE_SRC="${TRAVIS_BUILD_DIR}/${PYTHON_PACKAGE_NAME}"
-    - TINKER_ACCESS_CLIENT_SRC="/usr/local/lib/python2.7/dist-packages/${PYTHON_PACKAGE_NAME}"
-    - VERSION_DEST="${TRAVIS_BUILD_DIR}/${PYTHON_PACKAGE_NAME}/${PYTHON_PACKAGE_NAME}/version.py"
 
-branches:
-  except:
-    #Important: Prevents version release 'tag' commits from initiating builds
-    - /^v[0-9a-z\-]*/
+notifications:
+  slack:
+    rooms:
+      if ! [ -z "${SLACK_NOTIFICATION+x}" ]; then
+      - ${SLACK_NOTIFICATION}
