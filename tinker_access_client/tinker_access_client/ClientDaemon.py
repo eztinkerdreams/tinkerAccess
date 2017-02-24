@@ -42,9 +42,12 @@ class ClientDaemon:
                 )
                 daemon.start()
             except Exception as e:
-                logger.debug('%s start failed.', PackageInfo.pip_package_name)
+                msg = '{0} start failed.'.format(PackageInfo.pip_package_name)
+                logger.debug(msg)
                 logger.exception(e)
-                raise e
+                sys.stdout.write(msg + '\n')
+                sys.stdout.flush()
+                sys.exit(1)
         else:
             sys.stdout.write('{0} is already running...\n'.format(PackageInfo.pip_package_name))
             sys.stdout.flush()
@@ -83,15 +86,11 @@ class ClientDaemon:
 
     @staticmethod
     def update(opts, args):
-
         if not ClientDaemon.__is_in_use(opts, args):
             logger = ClientLogger.setup()
-
-            try:
-                requested_version = args[1] if len(args) >= 2 else None
-                if ClientDaemon.__should_update(opts, requested_version):
-                    ClientDaemon.stop(opts, args)
-
+            requested_version = args[1] if len(args) >= 2 else None
+            if ClientDaemon.__should_update(opts, requested_version):
+                try:
                     requested_package = PackageInfo.pip_package_name
 
                     # BUG: There is a big fat bug with pip that is causing it to redirect to
@@ -101,29 +100,32 @@ class ClientDaemon:
                     if requested_version:
                         requested_package = '{0}=={1}'.format(requested_package, requested_version)
 
+                    ClientDaemon.stop(opts, args)
                     CommandExecutor().execute_commands([
                         'pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir {0}'
                         .format(requested_package)
                     ])
-                else:
-                    version = 'current' if not requested_version else 'requested'
-                    sys.stdout.write(
-                        '{0} v{1} already matches the {2} version. \n'
-                        'Use the --force-update option to bypass the version check and re-install.\n'.format(
-                            PackageInfo.pip_package_name,
-                            PackageInfo.version,
-                            version
-                        ))
+                except Exception as e:
+                    msg = '{0} update failed, remediation maybe required!'.format(PackageInfo.pip_package_name)
+                    logger.debug(msg)
+                    logger.exception(e)
+                    sys.stdout.write(msg + '\n')
                     sys.stdout.flush()
                     sys.exit(1)
-            except Exception as e:
-                logger.debug('%s update failed, remediation maybe required!', PackageInfo.pip_package_name)
-                logger.exception(e)
-                raise e
-            finally:
-                if not ClientDaemon.__status(opts, args):
-                    ClientDaemon.restart(opts, args)
-
+                finally:
+                    if not ClientDaemon.__status(opts, args):
+                        ClientDaemon.restart(opts, args)
+            else:
+                version = 'current' if not requested_version else 'requested'
+                sys.stdout.write(
+                    '{0} v{1} already matches the {2} version. \n'
+                    'Use the --force-update option to bypass the version check and re-install.\n'.format(
+                        PackageInfo.pip_package_name,
+                        PackageInfo.version,
+                        version
+                    ))
+                sys.stdout.flush()
+                sys.exit(1)
         else:
             sys.stdout.write('{0} is currently in use, try again later...\n'.format(PackageInfo.pip_package_name))
             sys.stdout.flush()
@@ -131,21 +133,26 @@ class ClientDaemon:
 
     @staticmethod
     def __should_update(opts, requested_version=None):
-        if opts.get(ClientOption.FORCE_UPDATE):
-            return True
+        logger = ClientLogger.setup()
+        try:
+            if opts.get(ClientOption.FORCE_UPDATE):
+                return True
 
-        response = LoggedRequest.get('https://pypi.python.org/pypi/{0}/json'.format(PackageInfo.pip_package_name))
-        response.raise_for_status()
-        data = response.json()
+            response = LoggedRequest.get('https://pypi.python.org/pypi/{0}/json'.format(PackageInfo.pip_package_name))
+            response.raise_for_status()
+            data = response.json()
 
-        current_version = PackageInfo.version
-        latest_version = data.get('info', {}).get('version', '0.0.0')
-        latest_version = '.'.join([s.zfill(2) for s in latest_version.split('.')])
-        if not requested_version:
-            return current_version != latest_version
+            current_version = PackageInfo.version
+            latest_version = data.get('info', {}).get('version', '0.0.0')
+            latest_version = '.'.join([s.zfill(2) for s in latest_version.split('.')])
+            if not requested_version:
+                return current_version != latest_version
 
-        requested_version = '.'.join([s.zfill(2) for s in requested_version.split('.')])
-        return current_version != requested_version
+            requested_version = '.'.join([s.zfill(2) for s in requested_version.split('.')])
+            return current_version != requested_version
+        except Exception as e:
+            logger.exception(e)
+        return False
 
     @staticmethod
     def restart(opts, args):
@@ -159,13 +166,18 @@ class ClientDaemon:
             args[0] = Command.START.get('command')
             ClientDaemon.start(opts, args)
         except Exception as e:
-            logger.debug('%s restart failed.', PackageInfo.pip_package_name)
+            msg = '{0} restart failed.'.format(PackageInfo.pip_package_name)
+            logger.debug(msg)
             logger.exception(e)
-            raise e
+            sys.stdout.write(msg + '\n')
+            sys.stdout.flush()
+            sys.exit(1)
+        finally:
+            if not ClientDaemon.__status(opts, args):
+                ClientDaemon.restart(opts, args)
 
     @staticmethod
     def remove(opts, args):
-        logger = ClientLogger.setup()
         try:
             CommandExecutor().execute_commands([
                 '{'
