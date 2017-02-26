@@ -48,6 +48,7 @@ sudo pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir \
 --log install.log tinker-access-client
 ```
 
+
 Query the client status. If all goes as planned, the expected output should be *'idle'*:
 
 ```commandline

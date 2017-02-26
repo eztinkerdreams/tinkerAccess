@@ -98,8 +98,8 @@ class DeviceApi(object):
             self.__write_to_lcd('System Offline!', 'Try later...')
         except Exception:
             pass
-
-        self.GPIO.cleanup()
+        finally:
+            self.GPIO.cleanup()
 
     def __do_callback(self, call_back, *args, **kwargs):
         try:

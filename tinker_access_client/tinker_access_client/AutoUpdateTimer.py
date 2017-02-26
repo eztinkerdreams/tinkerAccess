@@ -26,16 +26,15 @@ class AutoUpdateTimer(object):
 
         self.__auto_update_timer = None
 
+    # noinspection PyBroadException
     def __auto_update_timer_tick(self):
-        self.__logger.debug('checking for updates')
         if not self.__client.is_in_use():
             try:
                 CommandExecutor().execute_commands([
                     '{0} update'.format(PackageInfo.pip_package_name)
                 ])
-            except Exception as e:
+            except Exception:
                 pass
-                #self.__logger.exception(e)
 
         self.__start_auto_update_timer()
 
