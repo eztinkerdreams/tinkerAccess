@@ -2,6 +2,7 @@ import time
 import json
 import logging
 import threading
+from LcdApi import LcdApi
 from ClientOptionParser import ClientOption
 
 
@@ -22,6 +23,7 @@ class DeviceApi(object):
         self.__fault = None
         self.__should_exit = False
         self.__edge_detected = False
+        self.__lcd_refresh_timer = None
         self.__logger = logging.getLogger(__name__)
 
         try:
@@ -48,7 +50,7 @@ class DeviceApi(object):
             import RPi.GPIO as GPIO
             import serial
             # from debug.VirtualSerial import VirtualSerial as serial
-            import lcdModule as LCD
+            # import lcdModule as LCD
 
             # TODO: log print board info after init...
             # To discover information about your RPi:
@@ -77,9 +79,6 @@ class DeviceApi(object):
         self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
         self.__serial_connection.flushInput()
         self.__serial_connection.flushOutput()
-
-        LCD.lcd_init()
-        self.__LCD = LCD
 
     def __enter__(self):
         return self
@@ -146,11 +145,28 @@ class DeviceApi(object):
         GPIO.output(self.__opts.get(ClientOption.PIN_LED_BLUE), blue)
 
     def __write_to_lcd(self, first_line, second_line):
-        # noinspection PyPep8Naming
-        LCD = self.__LCD
-        LCD.lcd_string(first_line, LCD.LCD_LINE_1)
-        LCD.lcd_string(second_line, LCD.LCD_LINE_2)
-        #time.sleep(2)
+        with LcdApi(self.GPIO) as lcd:
+            lcd.write(first_line, second_line)
+        self.__start_lcd_refresh_timer(first_line, second_line)
+
+    def __cancel_lcd_refresh_timer(self):
+        if self.__lcd_refresh_timer:
+            self.__lcd_refresh_timer.cancel()
+
+        self.__lcd_refresh_timer = None
+
+    def __lcd_refresh_timer_tick(self, first_line, second_line):
+        if not self.__should_exit:
+            self.__write_to_lcd(first_line, second_line)
+
+    def __start_lcd_refresh_timer(self, first_line, second_line):
+        self.__cancel_lcd_refresh_timer()
+        self.__lcd_refresh_timer = threading.Timer(
+            30,
+            self.__lcd_refresh_timer_tick,
+            [first_line, second_line]
+        )
+        self.__lcd_refresh_timer.start()
 
     def __write_to_pin(self, pin, state):
         # noinspection PyPep8Naming
