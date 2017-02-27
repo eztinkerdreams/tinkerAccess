@@ -44,8 +44,7 @@ By default, the tinker-access-client is installed as a service that starts immed
 Install the latest version of the client:
 
 ```commandline
-sudo pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir \
---log install.log tinker-access-client
+sudo pip install --upgrade --force-reinstall --ignore-installed --no-cache-dir tinker-access-client
 ```
 
 

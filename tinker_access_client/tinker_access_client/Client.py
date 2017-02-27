@@ -469,7 +469,6 @@ class Client(Machine):
         else:
             self.login(*args, **kwargs)
 
-
     #
     # wait - wait for the next edge detection event from the device.
     #
