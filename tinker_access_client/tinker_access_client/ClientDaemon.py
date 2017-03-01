@@ -43,11 +43,9 @@ class ClientDaemon:
                 daemon.start()
             except Exception as e:
                 msg = '{0} start failed.'.format(PackageInfo.pip_package_name)
-                logger.debug(msg)
+                logger.error(msg)
                 logger.exception(e)
-                sys.stdout.write(msg + '\n')
-                sys.stdout.flush()
-                sys.exit(1)
+                raise e
         else:
             sys.stdout.write('{0} is already running...\n'.format(PackageInfo.pip_package_name))
             sys.stdout.flush()
@@ -107,11 +105,9 @@ class ClientDaemon:
                     ])
                 except Exception as e:
                     msg = '{0} update failed, remediation maybe required!'.format(PackageInfo.pip_package_name)
-                    logger.debug(msg)
+                    logger.error(msg)
                     logger.exception(e)
-                    sys.stdout.write(msg + '\n')
-                    sys.stdout.flush()
-                    sys.exit(1)
+                    raise e
                 finally:
                     if not ClientDaemon.__status(opts, args):
                         ClientDaemon.restart(opts, args)
@@ -167,11 +163,9 @@ class ClientDaemon:
             ClientDaemon.start(opts, args)
         except Exception as e:
             msg = '{0} restart failed.'.format(PackageInfo.pip_package_name)
-            logger.debug(msg)
+            logger.error(msg)
             logger.exception(e)
-            sys.stdout.write(msg + '\n')
-            sys.stdout.flush()
-            sys.exit(1)
+            raise e
         finally:
             if not ClientDaemon.__status(opts, args):
                 ClientDaemon.restart(opts, args)
@@ -224,17 +218,18 @@ class ClientDaemon:
 
     @staticmethod
     def __get_process_ids():
+        logger = ClientLogger.setup()
         process_ids = []
 
         try:
             cmd = ['pgrep', '-f', '(/{0}\s+(start|restart|update))'.format(PackageInfo.pip_package_name)]
-            with open(os.devnull, 'w') as devnull:
-                for process_id in check_output(cmd, stderr=devnull).splitlines():
-                    process_id = int(process_id)
-                    is_current_process = process_id == int(os.getpid())
-                    if not is_current_process:
-                        process_ids.append(process_id)
-        except CalledProcessError:
+            for process_id in check_output(cmd).splitlines():
+                process_id = int(process_id)
+                is_current_process = process_id == int(os.getpid())
+                if not is_current_process:
+                    process_ids.append(process_id)
+        except CalledProcessError as e:
+            #logger.exception(e)
             pass
 
         return process_ids

@@ -396,9 +396,10 @@ class Client(Machine):
     #
 
     def __disable_power(self):
-        self.__device.write(Channel.PIN, self.__opts.get(ClientOption.PIN_POWER_RELAY), False)
-        self.__wait_for_power_down()
-        self.__wait_for_logout_coast_time()
+        if self.__device.read(Channel.PIN, self.__opts.get(ClientOption.PIN_POWER_RELAY)):
+            self.__device.write(Channel.PIN, self.__opts.get(ClientOption.PIN_POWER_RELAY), False)
+            self.__wait_for_power_down()
+            self.__wait_for_logout_coast_time()
 
     def __wait_for_power_down(self):
         current_sense_pin = self.__opts.get(ClientOption.PIN_CURRENT_SENSE)

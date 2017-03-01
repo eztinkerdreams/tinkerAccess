@@ -140,7 +140,7 @@ class LcdApi(object):
                     self.lcd_byte(ord(c), LCD_CHR)
 
         else:
-            messageLJ = message.ljust(LCD_WIDTH, " ")
+            messageLJ = message.ljust(LCD_WIDTH, ' ')
             for i in range(LCD_WIDTH):
                 self.lcd_byte(ord(messageLJ[i]), LCD_CHR)
 
