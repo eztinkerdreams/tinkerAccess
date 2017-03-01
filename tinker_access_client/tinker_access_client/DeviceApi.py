@@ -183,10 +183,35 @@ class DeviceApi(object):
         GPIO = self.GPIO
         if channel is Channel.PIN and pin and direction and call_back:
 
-            def edge_detected(*args, **kwargs):
-                self.__do_callback(call_back, args, kwargs)
+            def rising_edge_detected(*args, **kwargs):
+                pin = args[0]
+                self.__logger.debug('GPIO: possible, rising_edge_detected on pin: %s', pin)
+                time.sleep(.1)  # debounce for 5mSec
+                # only show valid edges
+                if GPIO.input(pin):
+                    self.__logger.debug('GPIO: confirmed, rising_edge_detected on pin: %s', pin)
+                    self.__do_callback(call_back, args, kwargs)
 
-            GPIO.add_event_detect(pin, direction, callback=edge_detected, bouncetime=250)
+            def falling_edge_detected(*args, **kwargs):
+                pin = args[0]
+                self.__logger.debug('GPIO: possible, falling_edge_detected on pin: %s', pin)
+                time.sleep(.1)  # debounce for 5mSec
+                # only show valid edges
+                if not GPIO.input(pin):
+                    self.__logger.debug('GPIO: confirmed, falling_edge_detected on pin: %s', pin)
+                    self.__do_callback(call_back, args, kwargs)
+
+            # def both_edge_detected(*args, **kwargs):
+            #     self.__do_callback(call_back, args, kwargs)
+
+            if direction == self.GPIO.RISING:
+                GPIO.add_event_detect(pin, direction, callback=rising_edge_detected, bouncetime=500)#, bouncetime=250)
+            elif direction == self.GPIO.FALLING:
+                GPIO.add_event_detect(pin, direction, callback=falling_edge_detected, bouncetime=500)  # , bouncetime=250)
+            # elif direction == self.GPIO.BOTH:
+            #     GPIO.add_event_detect(pin, direction, callback=both_edge_detected)  # , bouncetime=250)
+            else:
+                raise NotImplementedError
 
         elif channel is Channel.SERIAL and direction is self.GPIO.IN and call_back:
             poll_for_serial_input = threading.Thread(
