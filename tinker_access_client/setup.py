@@ -42,6 +42,7 @@ config = {
     'packages': find_packages(exclude=('tests*',)),
     'test_suite': 'nose.collector',
     'tests_require': [
+        'backports.tempfile==1.0rc1',
         'transitions==0.4.3',
         'daemonize==2.4.7',
         'requests==2.12.4',
