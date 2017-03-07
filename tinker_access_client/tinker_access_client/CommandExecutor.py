@@ -8,6 +8,7 @@ from ClientLogger import ClientLogger
 class CommandExecutor(object):
 
     def __init__(self, phase=None):
+        #TODO: going to need to pass in opts for clientLogger
         self.__logger = ClientLogger.setup(phase=phase)
 
     def ensure_execute_permission(self, path):

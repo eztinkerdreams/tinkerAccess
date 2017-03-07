@@ -27,13 +27,13 @@ class Trigger(object):
 
 # noinspection PyUnusedLocal
 class Client(Machine):
-    def __init__(self, device=None):
+    def __init__(self, device=None, opts=None):
+        self.__opts = opts
         self.__device = device
         self.__user_info = None
         self.__logout_timer = None
-        self.__logger = ClientLogger.setup()
-        self.__opts = ClientOptionParser().parse_args()[0]
-        self.__tinkerAccessServerApi = TinkerAccessServerApi(self.__opts)
+        self.__logger = ClientLogger.setup(opts)
+        self.__tinkerAccessServerApi = TinkerAccessServerApi(opts)
 
         states = []
         for key, value in vars(State).items():
@@ -542,14 +542,13 @@ class Client(Machine):
 
     @staticmethod
     def run(opts, args):
-        should_exit = False
-        logger = ClientLogger.setup()
+        logger = ClientLogger.setup(opts)
         reboot_delay = opts.get(ClientOption.REBOOT_DELAY) * 60
         reboot_on_error = opts.get(ClientOption.REBOOT_ON_ERROR)
 
         try:
             with DeviceApi(opts) as device, \
-                    Client(device) as client, \
+                    Client(device, opts) as client, \
                     AutoUpdateTimer(client, opts) as auto_update_timer:
 
                 device.on(
@@ -570,10 +569,9 @@ class Client(Machine):
                 while not client.is_terminated():
                     logger.debug('%s is waiting...', PackageInfo.pip_package_name)
                     client.wait()
-                should_exit = True
 
-        except (KeyboardInterrupt, SystemExit):
-            should_exit = True
+        except (KeyboardInterrupt, SystemExit) as e:
+            pass
 
         except Exception as e:
             logger.exception(e)
