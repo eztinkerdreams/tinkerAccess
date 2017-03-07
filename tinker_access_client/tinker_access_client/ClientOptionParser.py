@@ -286,7 +286,6 @@ class ClientOptionParser(object):
             action='store'
         )
 
-
     def parse_args(self, args=None, values=None):
         (opts, args) = self.__parser.parse_args(args=args, values=values)
         items = vars(opts)
@@ -298,28 +297,27 @@ class ClientOptionParser(object):
         if os.path.isfile(items.get(ClientOption.CONFIG_FILE)):
             config_file_parser = ConfigParser.RawConfigParser()
             config_file_parser.read(items.get(ClientOption.CONFIG_FILE))
-            if config_file_parser.has_section('config'):
-                for item in config_file_parser.items('config'):
-                    option = next((i for i in options if i.dest == item[0]), None)
-                    if option:
+            for item in config_file_parser.items('config'):
+                option = next((i for i in options if i.dest == item[0]), None)
+                if option:
 
-                        key = item[0]
-                        value = item[1]
-                        if option.type == 'int':
-                            value = int(value)
+                    key = item[0]
+                    value = item[1]
+                    if option.type == 'int':
+                        value = int(value)
 
-                        if option.type == 'float':
-                            value = float(value)
+                    if option.type == 'float':
+                        value = float(value)
 
-                        if option.action == 'store_true':
-                            value = value.lower() == 'true'
+                    if option.action == 'store_true':
+                        value = value.lower() == 'true'
 
-                        if option.action == 'store_false':
-                            value = value.lower() == 'false'
+                    if option.action == 'store_false':
+                        value = value.lower() == 'false'
 
-                        # prevents non-default command-line options from being replaced by config-file options
-                        if items.get(key) == option.default != value:
-                            items[key] = value
+                    # prevents non-default command-line options from being replaced by config-file options
+                    if items.get(key) == option.default != value:
+                        items[key] = value
 
         # TODO: make args[0] required?, check the value and raise error parser.error()
         return items, args

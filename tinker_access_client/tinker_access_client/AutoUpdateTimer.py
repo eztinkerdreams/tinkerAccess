@@ -12,7 +12,7 @@ class AutoUpdateTimer(object):
         self.__opts = opts
         self.__client = client
         self.__auto_update_timer = None
-        self.__logger = ClientLogger.setup()
+        self.__logger = ClientLogger.setup(opts)
 
     def __enter__(self):
         return self
