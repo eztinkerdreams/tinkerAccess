@@ -31,8 +31,8 @@ def run():
         sys.stdout.flush()
         sys.exit(1)
 
-    logger = ClientLogger.setup()
     (opts, args) = ClientOptionParser().parse_args()
+    logger = ClientLogger.setup(opts)
 
     try:
         with CommandHandler(opts, args) as handler:

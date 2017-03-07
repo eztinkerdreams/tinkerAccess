@@ -1,5 +1,6 @@
 import time
 import json
+import serial
 import logging
 import threading
 from LcdApi import LcdApi
@@ -18,6 +19,7 @@ class Channel(object):
 
 
 class DeviceApi(object):
+
     def __init__(self, opts):
         self.__opts = opts
         self.__fault = None
@@ -26,45 +28,24 @@ class DeviceApi(object):
         self.__lcd_refresh_timer = None
         self.__logger = logging.getLogger(__name__)
 
+    def __enter__(self):
         try:
-            # !Important: These modules are imported locally at runtime so that the unit test
-            # can run on non-rpi devices where GPIO won't load and cannot work
-            # (i.e. the build server, and dev environments) see: test_DeviceApi.py
-            self.__init__device_modules()
-
+            self.__configure_gpio()
+            self.__configure_serial()
         except (RuntimeError, ImportError) as e:
             self.__logger.exception(e)
             raise e
-
         except Exception as e:
-            self.__logger.debug('Device initialization failed with %s.', json.dumps(opts, indent=4, sort_keys=True))
+            self.__logger.debug(
+                'Device initialization failed with %s.',
+                json.dumps(self.__opts, indent=4, sort_keys=True))
             self.__logger.exception(e)
             raise e
+        return self
 
-    def __init__device_modules(self):
-        self.__init_gpio()
-
-    def __init_gpio(self):
-
-        try:
-            import RPi.GPIO as GPIO
-            import serial
-            # from debug.VirtualSerial import VirtualSerial as serial
-            # import lcdModule as LCD
-
-            # TODO: log print board info after init...
-            # To discover information about your RPi:
-            # GPIO.RPI_INFO
-            # To discover the Raspberry Pi board revision:
-            # GPIO.RPI_INFO['P1_REVISION']
-            # GPIO.RPI_REVISION    (deprecated)
-            # To discover the version of RPi.GPIO:
-            # GPIO.VERSION
-
-        except Exception as e:
-            self.__logger.exception(e)
-            raise e
-
+    def __configure_gpio(self):
+        # noinspection PyUnresolvedReferences
+        import RPi.GPIO as GPIO
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(self.__opts.get(ClientOption.PIN_LED_RED), GPIO.OUT)
         GPIO.setup(self.__opts.get(ClientOption.PIN_LED_BLUE), GPIO.OUT)
@@ -74,14 +55,12 @@ class DeviceApi(object):
         GPIO.setup(self.__opts.get(ClientOption.PIN_CURRENT_SENSE), GPIO.IN, GPIO.PUD_DOWN)
         self.GPIO = GPIO
 
+    def __configure_serial(self):
         serial_port_name = self.__opts.get(ClientOption.SERIAL_PORT_NAME)
         serial_port_speed = self.__opts.get(ClientOption.SERIAL_PORT_SPEED)
         self.__serial_connection = serial.Serial(serial_port_name, serial_port_speed)
         self.__serial_connection.flushInput()
         self.__serial_connection.flushOutput()
-
-    def __enter__(self):
-        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.__stop()
@@ -95,6 +74,7 @@ class DeviceApi(object):
         try:
             self.__write_to_led(True, False, False)
             self.__write_to_lcd('System Offline!', 'Try later...')
+            self.__cancel_lcd_refresh_timer()
         except Exception:
             pass
         finally:

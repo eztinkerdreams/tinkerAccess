@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import unittest
 
 from tinker_access_client.tinker_access_client.PackageInfo import PackageInfo

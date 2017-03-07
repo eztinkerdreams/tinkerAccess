@@ -2,9 +2,8 @@ import os
 import sys
 import signal
 import time
-from subprocess import \
-    check_output, \
-    CalledProcessError
+import subprocess
+from subprocess import CalledProcessError
 
 from State import State
 from Client import Client
@@ -22,7 +21,7 @@ class ClientDaemon:
 
     @staticmethod
     def start(opts, args):
-        logger = ClientLogger.setup()
+        logger = ClientLogger.setup(opts)
         if not ClientDaemon.__status(opts, args):
             try:
                 pid_file = opts.get(ClientOption.PID_FILE)
@@ -53,7 +52,7 @@ class ClientDaemon:
 
     @staticmethod
     def stop(opts, args):
-        logger = ClientLogger.setup()
+        logger = ClientLogger.setup(opts)
         pid_file = opts.get(ClientOption.PID_FILE)
         logout_coast_time = opts.get(ClientOption.LOGOUT_COAST_TIME)
         max_power_down_timeout = opts.get(ClientOption.MAX_POWER_DOWN_TIMEOUT)
@@ -85,7 +84,7 @@ class ClientDaemon:
     @staticmethod
     def update(opts, args):
         if not ClientDaemon.__is_in_use(opts, args):
-            logger = ClientLogger.setup()
+            logger = ClientLogger.setup(opts)
             requested_version = args[1] if len(args) >= 2 else None
             if ClientDaemon.__should_update(opts, requested_version):
                 try:
@@ -129,7 +128,7 @@ class ClientDaemon:
 
     @staticmethod
     def __should_update(opts, requested_version=None):
-        logger = ClientLogger.setup()
+        logger = ClientLogger.setup(opts)
         try:
             if opts.get(ClientOption.FORCE_UPDATE):
                 return True
@@ -152,7 +151,7 @@ class ClientDaemon:
 
     @staticmethod
     def restart(opts, args):
-        logger = ClientLogger.setup()
+        logger = ClientLogger.setup(opts)
         reboot_delay = opts.get(ClientOption.REBOOT_DELAY)
         logout_coast_time = opts.get(ClientOption.LOGOUT_COAST_TIME)
         max_power_down_timeout = opts.get(ClientOption.MAX_POWER_DOWN_TIMEOUT)
@@ -204,9 +203,9 @@ class ClientDaemon:
 
     @staticmethod
     def __status(opts, _):
-        process_ids = ClientDaemon.__get_process_ids()
         status_file = opts.get(ClientOption.STATUS_FILE)
 
+        process_ids = ClientDaemon.__get_process_ids()
         status = terminated = State.TERMINATED
         if os.path.isfile(status_file):
             with open(status_file, 'r') as f:
@@ -221,18 +220,23 @@ class ClientDaemon:
 
     @staticmethod
     def __get_process_ids():
-        logger = ClientLogger.setup()
         process_ids = []
+
+        # pid_file = opts.get(ClientOption.PID_FILE)
+        # if os.path.isfile(pid_file):
+        #     with open(pid_file, 'r') as f:
+        #         pid = f.readline().strip()
+        #         if pid:
+        #             process_ids.append(int(pid))
 
         try:
             cmd = ['pgrep', '-f', '(/{0}\s+(start|restart|update))'.format(PackageInfo.pip_package_name)]
-            for process_id in check_output(cmd).splitlines():
+            for process_id in subprocess.check_output(cmd).splitlines():
                 process_id = int(process_id)
                 is_current_process = process_id == int(os.getpid())
                 if not is_current_process:
                     process_ids.append(process_id)
-        except CalledProcessError as e:
-            #logger.exception(e)
+        except CalledProcessError:
             pass
 
         return process_ids
