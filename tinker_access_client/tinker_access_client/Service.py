@@ -16,11 +16,24 @@
 import os
 import sys
 import logging
+from State import State
 from PackageInfo import PackageInfo
 from ClientLogger import ClientLogger
 from ClientDaemon import ClientDaemon
 from CommandHandler import CommandHandler
 from ClientOptionParser import ClientOptionParser, Command
+
+
+def __get_status(opts, args):
+    status = ClientDaemon.status(opts, args)
+    if status:
+        sys.stdout.write('{0}\n'.format(status))
+        sys.stdout.flush()
+        sys.exit(0)
+    else:
+        sys.stdout.write('{0}\n'.format(State.TERMINATED))
+        sys.stdout.flush()
+        sys.exit(1)
 
 
 def run():
@@ -38,7 +51,7 @@ def run():
         with CommandHandler(opts, args) as handler:
             handler.on(Command.STOP, ClientDaemon.stop)
             handler.on(Command.START, ClientDaemon.start)
-            handler.on(Command.STATUS, ClientDaemon.status)
+            handler.on(Command.STATUS, __get_status)
             handler.on(Command.UPDATE, ClientDaemon.update)
             handler.on(Command.REMOVE, ClientDaemon.remove)
             handler.on(Command.RESTART, ClientDaemon.restart)

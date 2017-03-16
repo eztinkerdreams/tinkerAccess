@@ -22,7 +22,7 @@ class ClientDaemon:
     @staticmethod
     def start(opts, args):
         logger = ClientLogger.setup(opts)
-        if not ClientDaemon.__status(opts, args):
+        if not ClientDaemon.status(opts, args):
             try:
                 pid_file = opts.get(ClientOption.PID_FILE)
                 foreground = opts.get(ClientOption.DEBUG)
@@ -108,7 +108,7 @@ class ClientDaemon:
                     logger.exception(e)
                     raise e
                 finally:
-                    if not ClientDaemon.__status(opts, args):
+                    if not ClientDaemon.status(opts, args):
                         ClientDaemon.restart(opts, args)
             else:
                 version = 'current' if not requested_version else 'requested'
@@ -169,7 +169,7 @@ class ClientDaemon:
             logger.exception(e)
             raise e
         finally:
-            if not ClientDaemon.__status(opts, args):
+            if not ClientDaemon.status(opts, args):
                 ClientDaemon.restart(opts, args)
 
     @staticmethod
@@ -191,18 +191,6 @@ class ClientDaemon:
 
     @staticmethod
     def status(opts, args):
-        status = ClientDaemon.__status(opts, args)
-        if status:
-            sys.stdout.write('{0}\n'.format(status))
-            sys.stdout.flush()
-            sys.exit(0)
-        else:
-            sys.stdout.write('{0}\n'.format(State.TERMINATED))
-            sys.stdout.flush()
-            sys.exit(1)
-
-    @staticmethod
-    def __status(opts, _):
         status_file = opts.get(ClientOption.STATUS_FILE)
 
         process_ids = ClientDaemon.__get_process_ids()
@@ -215,7 +203,7 @@ class ClientDaemon:
 
     @staticmethod
     def __is_in_use(opts, args):
-        status = ClientDaemon.__status(opts, args)
+        status = ClientDaemon.status(opts, args)
         return status == State.IN_USE or status == State.IN_TRAINING
 
     @staticmethod
